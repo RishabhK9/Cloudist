@@ -1,0 +1,113 @@
+{
+  "id": "cloudfront",
+  "name": "CloudFront",
+  "icon": "/aws/Arch_Amazon-CloudWatch_64.svg",
+  "category": "Networking",
+  "description": "Content Delivery Network (CDN) service",
+  "terraformType": "aws_cloudfront_distribution",
+  "defaultConfig": {
+    "distribution_name": "",
+    "enabled": true,
+    "price_class": "PriceClass_100",
+    "http_version": "http2",
+    "ipv6_enabled": true,
+    "default_root_object": "index.html"
+  },
+  "configSchema": {
+    "distribution_name": {
+      "type": "string",
+      "label": "Distribution Name",
+      "description": "A unique name for your CloudFront distribution",
+      "required": true
+    },
+    "enabled": {
+      "type": "boolean",
+      "label": "Enabled",
+      "description": "Whether the distribution is enabled",
+      "default": true,
+      "required": true
+    },
+    "price_class": {
+      "type": "select",
+      "label": "Price Class",
+      "description": "The price class for the distribution",
+      "options": [
+        "PriceClass_100",
+        "PriceClass_200",
+        "PriceClass_All"
+      ],
+      "default": "PriceClass_100",
+      "required": true
+    },
+    "http_version": {
+      "type": "select",
+      "label": "HTTP Version",
+      "description": "The maximum HTTP version to support",
+      "options": ["http1.1", "http2", "http2and3"],
+      "default": "http2",
+      "required": true
+    },
+    "ipv6_enabled": {
+      "type": "boolean",
+      "label": "IPv6 Enabled",
+      "description": "Enable IPv6 for the distribution",
+      "default": true
+    },
+    "default_root_object": {
+      "type": "string",
+      "label": "Default Root Object",
+      "description": "The object that you want CloudFront to return when a user requests the root URL",
+      "default": "index.html",
+      "required": false
+    },
+    "aliases": {
+      "type": "string",
+      "label": "Alternate Domain Names (CNAMEs)",
+      "description": "Comma-separated list of domain names",
+      "required": false
+    },
+    "ssl_certificate": {
+      "type": "select",
+      "label": "SSL Certificate",
+      "description": "SSL certificate configuration",
+      "options": ["Default CloudFront Certificate", "Custom SSL Certificate"],
+      "default": "Default CloudFront Certificate",
+      "required": true
+    },
+    "minimum_protocol_version": {
+      "type": "select",
+      "label": "Minimum TLS Protocol Version",
+      "description": "The minimum version of SSL/TLS protocol",
+      "options": ["TLSv1", "TLSv1.1_2016", "TLSv1.2_2018", "TLSv1.2_2019", "TLSv1.2_2021"],
+      "default": "TLSv1.2_2021",
+      "required": true
+    },
+    "compress": {
+      "type": "boolean",
+      "label": "Automatic Compression",
+      "description": "Automatically compress content for web requests",
+      "default": true
+    },
+    "logging_enabled": {
+      "type": "boolean",
+      "label": "Enable Logging",
+      "description": "Enable access logging for the distribution",
+      "default": false
+    },
+    "geo_restriction_type": {
+      "type": "select",
+      "label": "Geographic Restriction",
+      "description": "The method to restrict distribution of content by country",
+      "options": ["none", "whitelist", "blacklist"],
+      "default": "none",
+      "required": true
+    },
+    "waf_enabled": {
+      "type": "boolean",
+      "label": "Enable AWS WAF",
+      "description": "Associate AWS WAF web ACL with this distribution",
+      "default": false
+    }
+  }
+}
+

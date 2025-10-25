@@ -29,17 +29,22 @@ const AVAILABLE_PROVIDERS = ['aws', 'azure', 'gcp'] as const
 const PROVIDER_SERVICES: Record<string, string[]> = {
   aws: [
     'api_gateway',
+    'cloudfront',
     'cloudwatch', 
     'cognito',
     'dynamodb',
+    'ebs',
     'ec2',
     'fargate',
+    'internet_gateway',
     'lambda',
     'rds',
     's3',
     'secrets_manager',
+    'security_group',
     'sqs',
     'step_functions',
+    'subnet',
     'vpc'
   ],
   azure: ['vm'],

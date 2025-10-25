@@ -1,6 +1,6 @@
 "use client"
 
-import { FilePlus, Save, Rocket, Undo2, Redo2 } from "lucide-react"
+import { FilePlus, Save, Rocket, Undo2, Redo2, Settings } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 
@@ -10,11 +10,12 @@ interface ToolbarProps {
   onDeploy: () => void
   onUndo: () => void
   onRedo: () => void
+  onOpenSettings: () => void
   canUndo?: boolean
   canRedo?: boolean
 }
 
-export function Toolbar({ onNewProject, onSave, onDeploy, onUndo, onRedo, canUndo, canRedo }: ToolbarProps) {
+export function Toolbar({ onNewProject, onSave, onDeploy, onUndo, onRedo, onOpenSettings, canUndo, canRedo }: ToolbarProps) {
   // Detect if user is on Mac - use state to avoid hydration mismatch
   const [isMac, setIsMac] = useState(false)
 
@@ -32,6 +33,11 @@ export function Toolbar({ onNewProject, onSave, onDeploy, onUndo, onRedo, canUnd
         <Button variant="ghost" size="sm" onClick={onSave} className="hover:bg-accent">
           <Save className="w-4 h-4 mr-2" />
           Save
+        </Button>
+        <div className="h-4 w-px bg-border mx-1" />
+        <Button variant="ghost" size="sm" onClick={onOpenSettings} className="hover:bg-accent">
+          <Settings className="w-4 h-4 mr-2" />
+          Settings
         </Button>
       </div>
 

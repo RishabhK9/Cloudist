@@ -7,6 +7,7 @@ import { ComponentPalette } from "@/components/component-palette";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
 import { Toolbar } from "@/components/toolbar";
+import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { CredentialManager } from "@/lib/credential-manager";
 import type { Block, Connection } from "@/types/infrastructure";
@@ -22,6 +23,7 @@ export default function InfrastructureBuilder() {
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [zoom, setZoom] = useState(1);
   const [showAIChat, setShowAIChat] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
 
   const [history, setHistory] = useState<HistoryState[]>([
@@ -178,6 +180,7 @@ export default function InfrastructureBuilder() {
           onDeploy={handleDeploy}
           onUndo={handleUndo}
           onRedo={handleRedo}
+          onOpenSettings={() => setShowSettings(true)}
           canUndo={historyIndex > 0}
           canRedo={historyIndex < history.length - 1}
         />
@@ -266,6 +269,9 @@ export default function InfrastructureBuilder() {
           </div>
         </div>
       )}
+
+      {/* Settings Dialog */}
+      <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>
   );
 }

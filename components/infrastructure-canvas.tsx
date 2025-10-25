@@ -297,12 +297,19 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       // Calculate the new state before applying it
       const updatedEdges = addEdge(newEdge, edges)
       
-      // Save state with the complete new state
-      if (!isSyncingFromHistory.current) {
-        saveState(nodes, updatedEdges, 'connect')
-      }
+      // Set flag to prevent history sync from overwriting this change
+      isSyncingFromHistory.current = true
       
+      // Update edges state first
       setEdges(updatedEdges)
+      
+      // Save state with the complete new state
+      saveState(nodes, updatedEdges, 'connect')
+      
+      // Reset flag after a short delay to allow state updates to complete
+      setTimeout(() => {
+        isSyncingFromHistory.current = false
+      }, 50)
     },
     [nodes, edges, provider, saveState],
   )
@@ -346,12 +353,19 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       // Calculate the new state before applying it
       const updatedNodes = nodes.concat(newNode)
       
-      // Save state with the complete new state
-      if (!isSyncingFromHistory.current) {
-        saveState(updatedNodes, edges, 'add_node')
-      }
+      // Set flag to prevent history sync from overwriting this change
+      isSyncingFromHistory.current = true
       
+      // Update nodes state first
       setNodes(updatedNodes)
+      
+      // Save state with the complete new state
+      saveState(updatedNodes, edges, 'add_node')
+      
+      // Reset flag after a short delay to allow state updates to complete
+      setTimeout(() => {
+        isSyncingFromHistory.current = false
+      }, 50)
     },
     [reactFlowInstance, nodes, edges, provider, saveState],
   )
@@ -383,17 +397,25 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       setSelectedEdges([])
     }
     
-    // Save state with complete updated state if there were changes
-    if (hasChanges && !isSyncingFromHistory.current) {
+    if (hasChanges) {
+      // Set flag to prevent history sync from overwriting this change
+      isSyncingFromHistory.current = true
+      
+      // Apply the changes
+      if (selectedNodes.length > 0) {
+        setNodes(updatedNodes)
+      }
+      if (selectedEdges.length > 0) {
+        setEdges(updatedEdges)
+      }
+      
+      // Save state with complete updated state
       saveState(updatedNodes, updatedEdges, 'delete_elements')
-    }
-    
-    // Apply the changes
-    if (selectedNodes.length > 0) {
-      setNodes(updatedNodes)
-    }
-    if (selectedEdges.length > 0) {
-      setEdges(updatedEdges)
+      
+      // Reset flag after a short delay to allow state updates to complete
+      setTimeout(() => {
+        isSyncingFromHistory.current = false
+      }, 50)
     }
   }, [selectedNodes, selectedEdges, nodes, edges, saveState])
 
@@ -925,7 +947,7 @@ provider "aws" {
                   <span className="font-medium text-gray-900">Cloud Services</span>
                 </div>
               </div>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
                 {!servicesLoaded ? (
                   <div className="col-span-3 flex items-center justify-center p-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
@@ -936,7 +958,7 @@ provider "aws" {
                     <span className="text-sm text-gray-600">No services available</span>
                   </div>
                 ) : (
-                  services.slice(0, 12).map((service) => (
+                  services.map((service) => (
                     <div
                       key={service.id}
                       className="flex flex-col items-center p-2 hover:bg-purple-50 rounded cursor-grab active:cursor-grabbing border border-gray-200 hover:border-purple-200 transition-colors"
