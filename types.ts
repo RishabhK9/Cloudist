@@ -67,7 +67,7 @@ export interface ConfigurationPanelProps {
 }
 
 // Infrastructure Canvas Types
-export type CloudProvider = "aws" | "gcp" | "azure"
+export type CloudProvider = "aws" | "gcp" | "azure" | "supabase"
 
 export interface InfrastructureCanvasProps {
   provider: CloudProvider
