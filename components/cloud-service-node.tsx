@@ -105,8 +105,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
       {/* `pointer-events-auto` ensures the handle receives hover events even if its parent scales. */}
       {(() => {
         const handleClass =
-          "w-3.5 h-3.5 !bg-blue-400 dark:!bg-blue-500 hover:!bg-blue-600 dark:hover:!bg-blue-700 " +
-          "transform-gpu origin-center transition-transform duration-150 transition-colors hover:scale-125 hover:z-20 pointer-events-auto rounded-full";
+          "w-3.5 h-3.5 !bg-blue-400 dark:!bg-blue-500 " +
+          "transform-gpu origin-center pointer-events-auto rounded-full";
 
         return (
           <>
@@ -130,7 +130,7 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
       })()}
 
       <div 
-        className="cursor-pointer hover:scale-105 transition-transform duration-200"
+        className="cursor-pointer"
         onDoubleClick={handleDoubleClick}
       >
         {/* Just the image */}
