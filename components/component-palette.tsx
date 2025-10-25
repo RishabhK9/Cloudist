@@ -22,6 +22,12 @@ import {
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
+import {
+  Accordion,
+  AccordionContent,
+  AccordionItem,
+  AccordionTrigger,
+} from "@/components/ui/accordion"
 import type { Block, BlockTemplate } from "@/types/infrastructure"
 
 // Map block types to AWS icon paths
@@ -208,28 +214,15 @@ interface ComponentPaletteProps {
 }
 
 export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
-  const [expandedCategories, setExpandedCategories] = useState<string[]>([
-    "compute",
-    "storage",
-    "networking",
-    "security",
-  ])
-
-  const toggleCategory = (category: string) => {
-    setExpandedCategories((prev) =>
-      prev.includes(category) ? prev.filter((c) => c !== category) : [...prev, category],
-    )
-  }
-
   const handleDragStart = (e: React.DragEvent, template: BlockTemplate) => {
     e.dataTransfer.setData("blockTemplate", JSON.stringify(template))
   }
 
   const categories = [
-    { id: "compute", name: "COMPUTE", icon: Server },
-    { id: "storage", name: "STORAGE", icon: Database },
-    { id: "networking", name: "NETWORKING", icon: Network },
-    { id: "security", name: "SECURITY", icon: Shield },
+    { id: "compute", name: "Compute", icon: Server },
+    { id: "storage", name: "Storage & Database", icon: Database },
+    { id: "networking", name: "Networking", icon: Network },
+    { id: "security", name: "Security & Identity", icon: Shield },
   ]
 
   return (
@@ -238,60 +231,91 @@ export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
         <h2 className="text-sm font-semibold text-sidebar-foreground">Components</h2>
       </div>
 
-      <ScrollArea className="flex-1">
+      <ScrollArea className="flex-1 h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
         <div className="p-2">
-          {categories.map((category) => {
-            const CategoryIcon = category.icon
-            const isExpanded = expandedCategories.includes(category.id)
-            const categoryBlocks = blockTemplates.filter((b) => b.category === category.id)
+          <Accordion type="multiple" defaultValue={["aws"]} className="w-full">
+            {/* AWS Provider */}
+            <AccordionItem value="aws" className="border-b-0">
+              <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  <img src="/aws/icon.png" alt="AWS" className="w-5 h-5 object-contain" />
+                  <span>AWS</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-2">
+                <Accordion type="multiple" defaultValue={[]} className="w-full ml-2">
+                  {categories.map((category) => {
+                    const CategoryIcon = category.icon
+                    const categoryBlocks = blockTemplates.filter((b) => b.category === category.id)
 
-            return (
-              <div key={category.id} className="mb-2">
-                <Button
-                  variant="ghost"
-                  className="w-full justify-start text-xs font-semibold text-muted-foreground hover:text-foreground"
-                  onClick={() => toggleCategory(category.id)}
-                >
-                  {isExpanded ? <ChevronDown className="w-3 h-3 mr-2" /> : <ChevronRight className="w-3 h-3 mr-2" />}
-                  <CategoryIcon className="w-3 h-3 mr-2" />
-                  {category.name}
-                </Button>
+                    return (
+                      <AccordionItem key={category.id} value={category.id} className="border-b-0">
+                        <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-xs font-medium">
+                          <div className="flex items-center gap-2">
+                            <CategoryIcon className="w-3 h-3" />
+                            <span>{category.name}</span>
+                          </div>
+                        </AccordionTrigger>
+                        <AccordionContent className="pb-2">
+                          <div className="ml-2 space-y-1">
+                            {categoryBlocks.map((template) => {
+                              // Check if icon is an image path (starts with /)
+                              const isImageIcon = template.icon.startsWith('/')
 
-                {isExpanded && (
-                  <div className="ml-2 mt-1 space-y-1">
-                    {categoryBlocks.map((template) => {
-                      // Check if icon is an image path (starts with /)
-                      const isImageIcon = template.icon.startsWith('/')
+                              return (
+                                <div
+                                  key={template.type}
+                                  draggable
+                                  onDragStart={(e) => handleDragStart(e, template)}
+                                  className="flex items-center gap-2 p-2 rounded-md bg-card hover:bg-accent cursor-move transition-colors group"
+                                >
+                                  {isImageIcon ? (
+                                    <img 
+                                      src={template.icon} 
+                                      alt={template.name}
+                                      className="w-4 h-4 object-contain"
+                                    />
+                                  ) : (
+                                    (() => {
+                                      const Icon = iconMap[template.icon]
+                                      return <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                                    })()
+                                  )}
+                                  <span className="text-xs text-card-foreground flex-1">{template.name}</span>
+                                  <div className="w-1 h-4 bg-muted-foreground/20 rounded group-hover:bg-primary/50" />
+                                </div>
+                              )
+                            })}
+                          </div>
+                        </AccordionContent>
+                      </AccordionItem>
+                    )
+                  })}
+                </Accordion>
+              </AccordionContent>
+            </AccordionItem>
 
-                      return (
-                        <div
-                          key={template.type}
-                          draggable
-                          onDragStart={(e) => handleDragStart(e, template)}
-                          className="flex items-center gap-2 p-2 rounded-md bg-card hover:bg-accent cursor-move transition-colors group"
-                        >
-                          {isImageIcon ? (
-                            <img 
-                              src={template.icon} 
-                              alt={template.name}
-                              className="w-4 h-4 object-contain"
-                            />
-                          ) : (
-                            (() => {
-                              const Icon = iconMap[template.icon]
-                              return <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
-                            })()
-                          )}
-                          <span className="text-xs text-card-foreground flex-1">{template.name}</span>
-                          <div className="w-1 h-4 bg-muted-foreground/20 rounded group-hover:bg-primary/50" />
-                        </div>
-                      )
-                    })}
-                  </div>
-                )}
-              </div>
-            )
-          })}
+            {/* Future providers can be added here */}
+            {/* 
+            <AccordionItem value="gcp" className="border-b-0">
+              <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  <Cloud className="w-5 h-5" />
+                  <span>GCP (Coming Soon)</span>
+                </div>
+              </AccordionTrigger>
+            </AccordionItem>
+
+            <AccordionItem value="azure" className="border-b-0">
+              <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  <Cloud className="w-5 h-5" />
+                  <span>Azure (Coming Soon)</span>
+                </div>
+              </AccordionTrigger>
+            </AccordionItem>
+            */}
+          </Accordion>
         </div>
       </ScrollArea>
     </div>

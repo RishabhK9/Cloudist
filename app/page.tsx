@@ -7,6 +7,9 @@ import { ComponentPalette } from "@/components/component-palette";
 import { Canvas } from "@/components/canvas";
 import { PropertiesPanel } from "@/components/properties-panel";
 import { Toolbar } from "@/components/toolbar";
+import { ProjectTitleBar } from "@/components/project-title-bar";
+import { CreateNewProjectDialog } from "@/components/create-new-project-dialog";
+import { OpenProjectDialog, type Project } from "@/components/open-project-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { CredentialManager } from "@/lib/credential-manager";
@@ -18,6 +21,13 @@ interface HistoryState {
 }
 
 export default function InfrastructureBuilder() {
+  // Project Management State
+  const [projects, setProjects] = useState<Project[]>([]);
+  const [currentProject, setCurrentProject] = useState<Project | null>(null);
+  const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showOpenProject, setShowOpenProject] = useState(false);
+  
+  // Canvas State
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
@@ -31,19 +41,47 @@ export default function InfrastructureBuilder() {
   ]);
   const [historyIndex, setHistoryIndex] = useState(0);
 
-  // Load saved canvas state on mount
+  // Load projects on mount
   useEffect(() => {
     try {
-      const savedState = localStorage.getItem("infrastructure-canvas-state");
-      if (savedState) {
-        const parsed = JSON.parse(savedState);
-        setBlocks(parsed.blocks || []);
-        setConnections(parsed.connections || []);
-        setHistory([{ blocks: parsed.blocks || [], connections: parsed.connections || [] }]);
-        console.log("✅ Canvas state loaded from localStorage");
+      const savedProjects = localStorage.getItem("infrastructure-projects");
+      const savedCurrentProjectId = localStorage.getItem("current-project-id");
+      
+      if (savedProjects) {
+        const parsedProjects = JSON.parse(savedProjects);
+        setProjects(parsedProjects);
+        
+        // Load current project if exists
+        if (savedCurrentProjectId) {
+          const project = parsedProjects.find((p: Project) => p.id === savedCurrentProjectId);
+          if (project) {
+            setCurrentProject(project);
+            setBlocks(project.blocks || []);
+            setConnections(project.connections || []);
+            setHistory([{ blocks: project.blocks || [], connections: project.connections || [] }]);
+            console.log("✅ Project loaded:", project.name);
+          }
+        }
+      }
+      
+      // If no projects exist, create a default one
+      if (!savedProjects || JSON.parse(savedProjects).length === 0) {
+        const defaultProject: Project = {
+          id: `project-${Date.now()}`,
+          name: "Untitled Project",
+          description: "",
+          createdAt: new Date().toISOString(),
+          lastModified: new Date().toISOString(),
+          blocks: [],
+          connections: [],
+        };
+        setProjects([defaultProject]);
+        setCurrentProject(defaultProject);
+        localStorage.setItem("infrastructure-projects", JSON.stringify([defaultProject]));
+        localStorage.setItem("current-project-id", defaultProject.id);
       }
     } catch (error) {
-      console.error("Failed to load canvas state:", error);
+      console.error("Failed to load projects:", error);
     }
   }, []);
 
@@ -116,36 +154,96 @@ export default function InfrastructureBuilder() {
     }
   };
 
-  const handleNewProject = () => {
-    if (
-      confirm(
-        "Start a new project? This will clear all blocks and connections."
-      )
-    ) {
-      setBlocks([]);
-      setConnections([]);
-      setSelectedBlockId(null);
-      setZoom(1);
-      setHistory([{ blocks: [], connections: [] }]);
-      setHistoryIndex(0);
+  // Project Management Functions
+  const saveCurrentProject = useCallback(() => {
+    if (!currentProject) return;
+
+    const updatedProject: Project = {
+      ...currentProject,
+      blocks,
+      connections,
+      lastModified: new Date().toISOString(),
+    };
+
+    const updatedProjects = projects.map((p) =>
+      p.id === currentProject.id ? updatedProject : p
+    );
+
+    setProjects(updatedProjects);
+    setCurrentProject(updatedProject);
+    localStorage.setItem("infrastructure-projects", JSON.stringify(updatedProjects));
+    console.log("✅ Project saved:", updatedProject.name);
+  }, [currentProject, blocks, connections, projects]);
+
+  const handleCreateProject = (name: string, description: string) => {
+    // Save current project first
+    if (currentProject) {
+      saveCurrentProject();
+    }
+
+    const newProject: Project = {
+      id: `project-${Date.now()}`,
+      name,
+      description,
+      createdAt: new Date().toISOString(),
+      lastModified: new Date().toISOString(),
+      blocks: [],
+      connections: [],
+    };
+
+    const updatedProjects = [...projects, newProject];
+    setProjects(updatedProjects);
+    setCurrentProject(newProject);
+    setBlocks([]);
+    setConnections([]);
+    setSelectedBlockId(null);
+    setZoom(1);
+    setHistory([{ blocks: [], connections: [] }]);
+    setHistoryIndex(0);
+
+    localStorage.setItem("infrastructure-projects", JSON.stringify(updatedProjects));
+    localStorage.setItem("current-project-id", newProject.id);
+    console.log("✅ New project created:", name);
+  };
+
+  const handleOpenProject = (project: Project) => {
+    // Save current project first
+    if (currentProject) {
+      saveCurrentProject();
+    }
+
+    setCurrentProject(project);
+    setBlocks(project.blocks || []);
+    setConnections(project.connections || []);
+    setSelectedBlockId(null);
+    setHistory([{ blocks: project.blocks || [], connections: project.connections || [] }]);
+    setHistoryIndex(0);
+    localStorage.setItem("current-project-id", project.id);
+    console.log("✅ Project opened:", project.name);
+  };
+
+  const handleDeleteProject = (projectId: string) => {
+    const updatedProjects = projects.filter((p) => p.id !== projectId);
+    setProjects(updatedProjects);
+    localStorage.setItem("infrastructure-projects", JSON.stringify(updatedProjects));
+
+    // If deleting current project, switch to another or create new
+    if (currentProject?.id === projectId) {
+      if (updatedProjects.length > 0) {
+        handleOpenProject(updatedProjects[0]);
+      } else {
+        handleCreateProject("Untitled Project", "");
+      }
     }
   };
 
   const handleSave = () => {
     try {
-      const canvasState = {
-        blocks,
-        connections,
-        lastSaved: new Date().toISOString(),
-      };
-      localStorage.setItem("infrastructure-canvas-state", JSON.stringify(canvasState));
-      console.log("✅ Canvas state saved successfully");
-      
-      // Show a brief save confirmation (you could add a toast notification here)
-      alert("Canvas saved successfully!");
+      saveCurrentProject();
+      alert("Project saved successfully!");
     } catch (error) {
-      console.error("Failed to save canvas state:", error);
-      alert("Failed to save canvas state. Please try again.");
+      console.error("Failed to save project:", error);
+      alert("Failed to save project. Please try again.");
     }
   };
 
@@ -170,48 +268,58 @@ export default function InfrastructureBuilder() {
   };
 
   return (
-    <div className="flex h-screen bg-background text-foreground overflow-hidden">
-      <ComponentPalette onAddBlock={handleAddBlock} />
-
-      <div className="flex-1 flex flex-col">
-        <Toolbar
-          onNewProject={handleNewProject}
-          onSave={handleSave}
-          onDeploy={handleDeploy}
-          onUndo={handleUndo}
-          onRedo={handleRedo}
-          onOpenSettings={() => setShowSettings(true)}
-          canUndo={historyIndex > 0}
-          canRedo={historyIndex < history.length - 1}
-        />
-
-        <ReactFlowProvider>
-          <Canvas
-            blocks={blocks}
-            connections={connections}
-            selectedBlockId={selectedBlockId}
-            zoom={zoom}
-            onSelectBlock={setSelectedBlockId}
-            onUpdateBlock={handleUpdateBlock}
-            onAddBlock={handleAddBlock}
-            onAddConnection={handleAddConnection}
-            onDeleteConnection={handleDeleteConnection}
-            onZoomChange={setZoom}
-          />
-        </ReactFlowProvider>
-      </div>
-
-      <PropertiesPanel
-        block={selectedBlock}
-        blocks={blocks}
-        connections={connections}
-        onUpdateBlock={handleUpdateBlock}
-        onDeleteBlock={handleDeleteBlock}
+    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
+      {/* Project Title Bar - Full Width */}
+      <ProjectTitleBar
+        projectName={currentProject?.name || "Untitled Project"}
+        onCreateProject={() => setShowCreateProject(true)}
+        onOpenProject={() => setShowOpenProject(true)}
+        onOpenSettings={() => setShowSettings(true)}
       />
+
+      {/* Main Content Area */}
+      <div className="flex flex-1 overflow-hidden">
+        <ComponentPalette onAddBlock={handleAddBlock} />
+
+        <div className="flex-1 flex flex-col">
+          {/* Toolbar */}
+          <Toolbar
+            onSave={handleSave}
+            onDeploy={handleDeploy}
+            onUndo={handleUndo}
+            onRedo={handleRedo}
+            canUndo={historyIndex > 0}
+            canRedo={historyIndex < history.length - 1}
+          />
+
+          <ReactFlowProvider>
+            <Canvas
+              blocks={blocks}
+              connections={connections}
+              selectedBlockId={selectedBlockId}
+              zoom={zoom}
+              onSelectBlock={setSelectedBlockId}
+              onUpdateBlock={handleUpdateBlock}
+              onAddBlock={handleAddBlock}
+              onAddConnection={handleAddConnection}
+              onDeleteConnection={handleDeleteConnection}
+              onZoomChange={setZoom}
+            />
+          </ReactFlowProvider>
+        </div>
+
+        <PropertiesPanel
+          block={selectedBlock}
+          blocks={blocks}
+          connections={connections}
+          onUpdateBlock={handleUpdateBlock}
+          onDeleteBlock={handleDeleteBlock}
+        />
+      </div>
 
       {/* Deployment Error Notification */}
       {deploymentError && (
-        <div className="fixed top-20 left-1/2 -translate-x-1/2 w-96 bg-destructive/10 border border-destructive/50 rounded-lg shadow-lg z-50 p-4">
+        <div className="fixed top-28 left-1/2 -translate-x-1/2 w-96 bg-destructive/10 border border-destructive/50 rounded-lg shadow-lg z-50 p-4">
           <div className="flex items-start gap-3">
             <div className="flex-1">
               <div className="font-semibold text-destructive mb-1">Deployment Error:</div>
@@ -270,7 +378,20 @@ export default function InfrastructureBuilder() {
         </div>
       )}
 
-      {/* Settings Dialog */}
+      {/* Dialogs */}
+      <CreateNewProjectDialog
+        open={showCreateProject}
+        onOpenChange={setShowCreateProject}
+        onCreateProject={handleCreateProject}
+      />
+      <OpenProjectDialog
+        open={showOpenProject}
+        onOpenChange={setShowOpenProject}
+        projects={projects}
+        currentProjectId={currentProject?.id || null}
+        onOpenProject={handleOpenProject}
+        onDeleteProject={handleDeleteProject}
+      />
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
     </div>
   );
