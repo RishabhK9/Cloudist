@@ -26,22 +26,52 @@ import type { Block, BlockTemplate } from "@/types/infrastructure"
 
 // Map block types to AWS icon paths
 const awsIconMap: Record<string, string> = {
+  // Compute
   ec2: "/aws/Arch_Amazon-EC2_64.svg",
   lambda: "/aws/Arch_AWS-Lambda_64.svg",
-  kubernetes: "/aws/Arch_Amazon-EKS-Cloud_64.svg",
+  fargate: "/aws/Arch_AWS-Fargate_64.svg",
+  kubernetes: "/aws/Arcg_AWS_Elastic_Kubernetes_Service.svg",
   container: "/aws/Arch_Amazon-ECS-Anywhere_64.svg",
+  
+  // Storage
   s3: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
+  ebs: "/aws/Arch_Amazon-Elastic-Block-Store_64.svg",
+  
+  // Database
   rds: "/aws/Arch_Amazon-RDS_64.svg",
+  dynamodb: "/aws/Arch_Amazon-DynamoDB_64.svg",
   redis: "/aws/Arch_Amazon-ElastiCache_64.svg",
-  ebs: "/aws/Arch_Amazon-EC2_64.svg",
+  
+  // Networking
   vpc: "/aws/vpc.svg",
-  loadbalancer: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
+  subnet: "🔗",
+  internet_gateway: "🌍",
+  api_gateway: "/aws/Arch_Amazon-API-Gateway_64.svg",
   apigateway: "/aws/Arch_Amazon-API-Gateway_64.svg",
+  loadbalancer: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   cloudfront: "/aws/Arch_Amazon-CloudWatch_64.svg",
-  securitygroup: "/aws/vpc.svg",
-  iam: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
+  
+  // Security
+  security_group: "/aws/ec2.svg",
+  securitygroup: "/aws/ec2.svg",
+  cognito: "/aws/Arch_Amazon-Cognito_64.svg",
+  secrets_manager: "/aws/Arch_AWS-Secrets-Manager_64.svg",
   secrets: "/aws/Arch_AWS-Secrets-Manager_64.svg",
+  iam: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
   waf: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
+  
+  // Integration & Orchestration
+  sqs: "/aws/Arch_Amazon-Simple-Queue-Service_64.svg",
+  step_functions: "/aws/Arch_AWS-Step-Functions_64.svg",
+  
+  // Monitoring
+  cloudwatch: "/aws/Arch_Amazon-CloudWatch_64.svg",
+  costmonitor: "/aws/Arch_Amazon-CloudWatch_64.svg",
+  
+  // Other
+  securityscanner: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
+  autoscaler: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
+  backupmanager: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
 }
 
 const blockTemplates: BlockTemplate[] = [
@@ -74,6 +104,13 @@ const blockTemplates: BlockTemplate[] = [
     category: "compute",
     defaultConfig: { image: "nginx:latest" },
   },
+  {
+    type: "fargate",
+    name: "Fargate",
+    icon: awsIconMap.fargate,
+    category: "compute",
+    defaultConfig: { cpu: 256, memory: 512 },
+  },
 
   // Storage
   {
@@ -98,11 +135,11 @@ const blockTemplates: BlockTemplate[] = [
     defaultConfig: { nodeType: "cache.t3.micro" },
   },
   {
-    type: "ebs",
-    name: "EBS Volume",
-    icon: awsIconMap.ebs,
+    type: "dynamodb",
+    name: "DynamoDB",
+    icon: awsIconMap.dynamodb,
     category: "storage",
-    defaultConfig: { size: 100, type: "gp3" },
+    defaultConfig: { billingMode: "PAY_PER_REQUEST" },
   },
 
   // Networking
@@ -124,16 +161,30 @@ const blockTemplates: BlockTemplate[] = [
   },
 
   // Security
-  {
-    type: "securitygroup",
-    name: "Security Group",
-    icon: awsIconMap.securitygroup,
-    category: "security",
-    defaultConfig: { inbound: [], outbound: [] },
-  },
   { type: "iam", name: "IAM Role", icon: awsIconMap.iam, category: "security", defaultConfig: { policies: [] } },
   { type: "secrets", name: "Secrets Manager", icon: awsIconMap.secrets, category: "security", defaultConfig: { rotation: true } },
   { type: "waf", name: "WAF Rule", icon: awsIconMap.waf, category: "security", defaultConfig: { rules: [] } },
+  {
+    type: "cognito",
+    name: "Cognito",
+    icon: awsIconMap.cognito,
+    category: "security",
+    defaultConfig: { mfa: false },
+  },
+  {
+    type: "sqs",
+    name: "SQS Queue",
+    icon: awsIconMap.sqs,
+    category: "networking",
+    defaultConfig: { delaySeconds: 0 },
+  },
+  {
+    type: "cloudwatch",
+    name: "CloudWatch",
+    icon: awsIconMap.cloudwatch,
+    category: "networking",
+    defaultConfig: { retentionDays: 7 },
+  },
 ]
 
 const iconMap: Record<string, any> = {

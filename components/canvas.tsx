@@ -23,23 +23,49 @@ import "@xyflow/react/dist/style.css"
 
 // Map block types to AWS icon paths
 const awsIconMap: Record<string, string> = {
+  // Compute
   ec2: "/aws/Arch_Amazon-EC2_64.svg",
   lambda: "/aws/Arch_AWS-Lambda_64.svg",
-  kubernetes: "/aws/Arch_Amazon-EKS-Cloud_64.svg",
+  fargate: "/aws/Arch_AWS-Fargate_64.svg",
+  kubernetes: "/aws/Arcg_AWS_Elastic_Kubernetes_Service.svg",
   container: "/aws/Arch_Amazon-ECS-Anywhere_64.svg",
+  
+  // Storage
   s3: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
+  ebs: "/aws/Arch_Amazon-Elastic-Block-Store_64.svg",
+  
+  // Database
   rds: "/aws/Arch_Amazon-RDS_64.svg",
+  dynamodb: "/aws/Arch_Amazon-DynamoDB_64.svg",
   redis: "/aws/Arch_Amazon-ElastiCache_64.svg",
-  ebs: "/aws/Arch_Amazon-EC2_64.svg",
+  
+  // Networking
   vpc: "/aws/vpc.svg",
-  loadbalancer: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
+  subnet: "🔗",
+  internet_gateway: "🌍",
+  api_gateway: "/aws/Arch_Amazon-API-Gateway_64.svg",
   apigateway: "/aws/Arch_Amazon-API-Gateway_64.svg",
+  loadbalancer: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   cloudfront: "/aws/Arch_Amazon-CloudWatch_64.svg",
-  securitygroup: "/aws/vpc.svg",
-  iam: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
+  
+  // Security
+  security_group: "/aws/ec2.svg",
+  securitygroup: "/aws/ec2.svg",
+  cognito: "/aws/Arch_Amazon-Cognito_64.svg",
+  secrets_manager: "/aws/Arch_AWS-Secrets-Manager_64.svg",
   secrets: "/aws/Arch_AWS-Secrets-Manager_64.svg",
+  iam: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
   waf: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
+  
+  // Integration & Orchestration
+  sqs: "/aws/Arch_Amazon-Simple-Queue-Service_64.svg",
+  step_functions: "/aws/Arch_AWS-Step-Functions_64.svg",
+  
+  // Monitoring
+  cloudwatch: "/aws/Arch_Amazon-CloudWatch_64.svg",
   costmonitor: "/aws/Arch_Amazon-CloudWatch_64.svg",
+  
+  // Other
   securityscanner: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
   autoscaler: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   backupmanager: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
