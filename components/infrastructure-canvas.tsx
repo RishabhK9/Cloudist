@@ -232,26 +232,34 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       name: "Microsoft Azure",
       color: "text-cyan-500",
     },
+    supabase: {
+      name: "Supabase",
+      color: "text-emerald-500",
+    },
   }
 
   const [services, setServices] = useState<any[]>([])
+  const [allServices, setAllServices] = useState<Record<string, any[]>>({})
   const [categories, setCategories] = useState<string[]>([])
   const [servicesLoaded, setServicesLoaded] = useState(false)
+  const [selectedProviders, setSelectedProviders] = useState<string[]>([provider])
 
   const config = providerConfig[provider as keyof typeof providerConfig]
 
-  // Load services from config files
+  // Load services from ALL provider config files
   useEffect(() => {
     const loadServices = async () => {
       try {
         const serviceConfigs = await ConfigLoader.loadAllConfigs()
-        const providerServices = Object.values(serviceConfigs[provider] || {})
-        setServices(providerServices)
-        setCategories([...new Set(providerServices.map((s) => s.category))])
+        console.log('📦 Loaded all service configs:', serviceConfigs)
+        setAllServices(serviceConfigs)
         setServicesLoaded(true)
+        
+        // The filtering will be handled by the selectedProviders effect below
       } catch (error) {
         console.error('Failed to load services:', error)
         setServices([])
+        setAllServices({})
         setCategories([])
         setServicesLoaded(true)
       }
@@ -259,6 +267,34 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     loadServices()
   }, [provider])
+
+  // Update displayed services when provider filter changes
+  useEffect(() => {
+    if (Object.keys(allServices).length === 0) return
+    
+    console.log('🔍 Filtering services for providers:', selectedProviders)
+    
+    const filteredServices: any[] = []
+    const allCategories = new Set<string>()
+    
+    selectedProviders.forEach(providerKey => {
+      const providerServiceList = Object.values(allServices[providerKey] || {})
+      console.log(`  - ${providerKey}: ${providerServiceList.length} services`)
+      
+      providerServiceList.forEach((service: any) => {
+        // Add provider info to each service
+        filteredServices.push({
+          ...service,
+          provider: providerKey
+        })
+        allCategories.add(service.category)
+      })
+    })
+    
+    console.log(`✅ Filtered to ${filteredServices.length} total services`)
+    setServices(filteredServices)
+    setCategories([...allCategories])
+  }, [selectedProviders, allServices])
 
   const onConnect: OnConnect = useCallback(
     (params: Connection | Edge) => {
@@ -337,7 +373,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         position,
         data: {
           ...service,
-          provider: provider,
+          provider: service.provider || provider,
           config: service.defaultConfig || {},
           terraformType: service.terraformType,
         },
@@ -435,6 +471,12 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
     // Trigger Terraform file regeneration when save is pressed
     updateAllTerraformFiles()
     console.log('Configuration saved - Terraform files updated')
+    
+    // Save canvas state to project
+    saveCurrentState()
+    
+    // Close the configuration panel after saving
+    handleCloseConfigPanel()
     
     // Optional: Add visual feedback (could be enhanced with toast notifications)
     // For now, we'll just log the success
@@ -704,7 +746,20 @@ provider "aws" {
     }
 
     // Check if credentials are configured
-    if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
+    const hasSupabaseNodes = nodes.some(node => (node.data as any)?.provider === 'supabase')
+    const hasCloudProviderNodes = nodes.some(node => {
+      const nodeProvider = (node.data as any)?.provider
+      return nodeProvider === 'aws' || nodeProvider === 'gcp' || nodeProvider === 'azure'
+    })
+
+    // Check Supabase credentials if Supabase nodes exist
+    if (hasSupabaseNodes && !CredentialManager.hasCredentials('supabase')) {
+      setDeploymentError('No Supabase credentials configured. Please configure your Supabase access token in settings.')
+      return
+    }
+
+    // Check cloud provider credentials if cloud nodes exist
+    if (hasCloudProviderNodes && !CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
       setDeploymentError(`No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`)
       return
     }
@@ -925,6 +980,43 @@ provider "aws" {
                   <span className="font-medium text-gray-900">Cloud Services</span>
                 </div>
               </div>
+              
+              {/* Provider Filter */}
+              <div className="mb-3 flex flex-wrap gap-1.5">
+                {['aws', 'gcp', 'azure', 'supabase'].map((providerKey) => {
+                  const isSelected = selectedProviders.includes(providerKey)
+                  const providerInfo = providerConfig[providerKey as keyof typeof providerConfig]
+                  
+                  if (!providerInfo) return null
+                  
+                  return (
+                    <button
+                      key={providerKey}
+                      onClick={() => {
+                        if (isSelected && selectedProviders.length > 1) {
+                          setSelectedProviders(selectedProviders.filter(p => p !== providerKey))
+                        } else if (!isSelected) {
+                          setSelectedProviders([...selectedProviders, providerKey])
+                        }
+                      }}
+                      className={`px-2.5 py-1 rounded text-xs font-medium transition-all ${
+                        isSelected
+                          ? providerKey === 'aws'
+                            ? 'bg-orange-100 text-orange-700 border border-orange-300'
+                            : providerKey === 'gcp'
+                            ? 'bg-blue-100 text-blue-700 border border-blue-300'
+                            : providerKey === 'azure'
+                            ? 'bg-cyan-100 text-cyan-700 border border-cyan-300'
+                            : 'bg-emerald-100 text-emerald-700 border border-emerald-300'
+                          : 'bg-gray-100 text-gray-600 border border-gray-300 hover:bg-gray-200'
+                      }`}
+                    >
+                      {providerInfo.name}
+                    </button>
+                  )
+                })}
+              </div>
+              
               <div className="grid grid-cols-3 gap-2">
                 {!servicesLoaded ? (
                   <div className="col-span-3 flex items-center justify-center p-4">
@@ -938,11 +1030,24 @@ provider "aws" {
                 ) : (
                   services.slice(0, 12).map((service) => (
                     <div
-                      key={service.id}
-                      className="flex flex-col items-center p-2 hover:bg-purple-50 rounded cursor-grab active:cursor-grabbing border border-gray-200 hover:border-purple-200 transition-colors"
+                      key={`${service.provider}-${service.id}`}
+                      className="relative flex flex-col items-center p-2 hover:bg-purple-50 rounded cursor-grab active:cursor-grabbing border border-gray-200 hover:border-purple-200 transition-colors"
                       draggable
                       onDragStart={(event) => onDragStart(event, service)}
                     >
+                      {/* Provider badge */}
+                      <div className={`absolute top-1 right-1 w-4 h-4 rounded-full flex items-center justify-center text-[8px] font-bold text-white ${
+                        service.provider === 'aws' ? 'bg-orange-500' :
+                        service.provider === 'gcp' ? 'bg-blue-500' :
+                        service.provider === 'azure' ? 'bg-cyan-500' :
+                        service.provider === 'supabase' ? 'bg-emerald-500' :
+                        'bg-gray-500'
+                      }`}>
+                        {service.provider === 'aws' ? 'A' :
+                         service.provider === 'gcp' ? 'G' :
+                         service.provider === 'azure' ? 'Z' :
+                         service.provider === 'supabase' ? 'S' : '?'}
+                      </div>
                       <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-1">
                         {service.icon.startsWith('/') ? (
                           <img src={service.icon} alt={service.name} className="w-6 h-6" />

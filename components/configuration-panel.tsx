@@ -24,6 +24,12 @@ export function ConfigurationPanel({
   const [loadedServiceConfig, setLoadedServiceConfig] = useState<ServiceConfig | null>(null)
   const [loading, setLoading] = useState(false)
 
+  // Sync config state when nodeData changes
+  useEffect(() => {
+    if (nodeData?.config) {
+      setConfig(nodeData.config)
+    }
+  }, [nodeData?.config])
   
   useEffect(() => {
     const loadConfig = async () => {
@@ -31,8 +37,15 @@ export function ConfigurationPanel({
       
       setLoading(true)
       try {
-        const config = await ConfigLoader.loadServiceConfig(nodeData.provider, nodeData.id)
-        setLoadedServiceConfig(config)
+        const serviceConfig = await ConfigLoader.loadServiceConfig(nodeData.provider, nodeData.id)
+        setLoadedServiceConfig(serviceConfig)
+        
+        // If node doesn't have config yet, initialize with defaults
+        if (!nodeData.config || Object.keys(nodeData.config).length === 0) {
+          const defaultConfig = serviceConfig?.defaultConfig || {}
+          setConfig(defaultConfig)
+          onConfigUpdate(defaultConfig)
+        }
       } catch (error) {
         console.error('Failed to load service config:', error)
       } finally {
@@ -144,8 +157,14 @@ export function ConfigurationPanel({
               />
             )
           }
+          
+          // Check if this is a password field
+          const isPasswordField = fieldConfig.label.toLowerCase().includes("password") || 
+                                  key.toLowerCase().includes("password")
+          
           return (
             <Input
+              type={isPasswordField ? "password" : "text"}
               className="h-8"
               value={value}
               onChange={(e) => updateConfig(key, e.target.value)}
@@ -192,6 +211,8 @@ export function ConfigurationPanel({
         return 'bg-blue-500'
       case 'azure':
         return 'bg-cyan-500'
+      case 'supabase':
+        return 'bg-emerald-500'
       default:
         return 'bg-gray-500'
     }
@@ -273,6 +294,27 @@ export function ConfigurationPanel({
             {/* Dynamic Configuration Fields */}
             {filteredSchema.map(([key, fieldConfig]) => renderConfigField(key, fieldConfig))}
           </div>
+        </div>
+      </div>
+
+      {/* Footer with Save Button */}
+      <div className="p-4 border-t border-gray-200 bg-gray-50">
+        <div className="flex gap-2">
+          <Button
+            onClick={onSave}
+            className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
+            size="sm"
+          >
+            <Save className="w-4 h-4 mr-2" />
+            Save Configuration
+          </Button>
+          <Button
+            onClick={onClose}
+            variant="outline"
+            size="sm"
+          >
+            Cancel
+          </Button>
         </div>
       </div>
     </div>
