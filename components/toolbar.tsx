@@ -79,8 +79,8 @@ export function Toolbar({
 
       {/* Right Section */}
       <div className="flex items-center gap-2 flex-1 justify-end">
-        {/* Code Review Button - Always visible except when applying */}
-        {onCodeReview && deploymentStage !== 'applying' && (
+        {/* Code Review Button - Only visible after Terraform is generated */}
+        {onCodeReview && (deploymentStage === 'generated' || deploymentStage === 'planned' || deploymentStage === 'applied') && (
           <Button 
             variant="default"
             size="default"
