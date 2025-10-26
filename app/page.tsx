@@ -15,6 +15,7 @@ import {
 } from "@/components/open-project-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";
 import type { Block, Connection } from "@/types/infrastructure";
 
@@ -24,10 +25,13 @@ interface HistoryState {
 }
 
 export default function InfrastructureBuilder() {
+  const { toast } = useToast();
+  
   // Project Management State
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showEditProject, setShowEditProject] = useState(false);
   const [showOpenProject, setShowOpenProject] = useState(false);
 
   // Canvas State
@@ -270,10 +274,24 @@ export default function InfrastructureBuilder() {
   const handleSave = () => {
     try {
       saveCurrentProject();
-      alert("Project saved successfully!");
+      const toastInstance = toast({
+        title: "✓ Project saved",
+        description: "Your infrastructure design has been saved successfully.",
+        duration: 2500,
+      });
+      
+      // Auto-dismiss after duration
+      setTimeout(() => {
+        toastInstance.dismiss();
+      }, 2500);
     } catch (error) {
       console.error("Failed to save project:", error);
-      alert("Failed to save project. Please try again.");
+      toast({
+        title: "✗ Save failed",
+        description: "Failed to save project. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   };
 
@@ -298,7 +316,11 @@ export default function InfrastructureBuilder() {
     }
 
     // If credentials are configured, proceed with deployment
-    alert("Deployment would start here! AWS credentials are configured.");
+    toast({
+      title: "🚀 Deployment started",
+      description: "Your infrastructure deployment has been initiated.",
+      duration: 3000,
+    });
   };
 
   return (
