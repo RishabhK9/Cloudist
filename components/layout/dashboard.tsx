@@ -1,7 +1,7 @@
 "use client"
 
-import { CreateProjectDialog } from "@/components/create-project-dialog"
-import { ProjectView } from "@/components/project-view"
+import { CreateProjectDialog } from "@/components/dialogs/create-project-dialog"
+import { ProjectView } from "@/components/layout/project-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"

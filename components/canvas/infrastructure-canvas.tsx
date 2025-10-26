@@ -53,6 +53,7 @@ import { AgentChat } from "@/components/agent-chat"
 
 import { AIReviewDialog } from "./ai-review-dialog"
 import { SaveStatusIndicator } from "./save-status-indicator"
+import { ProvidersPane } from "./providers-pane"
 
 
 const createNodeTypes = (onNodeDoubleClick: (nodeData: any) => void) => ({
@@ -87,6 +88,8 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   // Canvas state management
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
+  const [rightPanelWidth, setRightPanelWidth] = useState(384) // 384px = w-96
+  const [isResizing, setIsResizing] = useState(false)
 
   // Save current canvas state to project
   const saveCurrentState = useCallback(() => {
@@ -862,6 +865,39 @@ provider "aws" {
     updateFiles()
   }, [nodes])
 
+  // Handle resize functionality
+  const handleMouseDown = useCallback(() => {
+    setIsResizing(true)
+  }, [])
+
+  useEffect(() => {
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!isResizing) return
+      
+      const newWidth = window.innerWidth - e.clientX
+      // Min width: 320px, Max width: 800px
+      setRightPanelWidth(Math.max(320, Math.min(800, newWidth)))
+    }
+
+    const handleMouseUp = () => {
+      setIsResizing(false)
+    }
+
+    if (isResizing) {
+      document.addEventListener('mousemove', handleMouseMove)
+      document.addEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = 'ew-resize'
+      document.body.style.userSelect = 'none'
+    }
+
+    return () => {
+      document.removeEventListener('mousemove', handleMouseMove)
+      document.removeEventListener('mouseup', handleMouseUp)
+      document.body.style.cursor = ''
+      document.body.style.userSelect = ''
+    }
+  }, [isResizing])
+
   // Handle keyboard events for delete and undo/redo functionality
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1092,10 +1128,24 @@ provider "aws" {
             onSave={handleSaveConfig}
           />
         ) : (
-          <aside className="w-80 border-l border-gray-200 bg-gray-50 text-gray-900">
-            <div className="h-full flex flex-col">
+          <aside 
+            className="border-l border-gray-200 bg-gray-50 text-gray-900 flex flex-col relative h-full"
+            style={{ width: `${rightPanelWidth}px` }}
+          >
+            {/* Resize Handle */}
+            <div
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-50"
+              onMouseDown={handleMouseDown}
+              style={{ 
+                width: '4px', 
+                marginLeft: '-2px',
+                backgroundColor: isResizing ? '#3b82f6' : 'transparent'
+              }}
+            />
+            {/* Terraform Code Section - Takes 60% of height */}
+            <div className="flex flex-col overflow-hidden" style={{ height: '60%', minHeight: '300px' }}>
               {/* Code Editor Header */}
-              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50">
+              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50 shrink-0">
                 <div className="flex items-center gap-2">
                   <Code className="w-4 h-4" />
                   <Select value={activeFile} onValueChange={handleFileChange}>
@@ -1127,10 +1177,10 @@ provider "aws" {
               </div>
 
               {/* Code Content */}
-              <div className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col">
+              <div className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col" style={{ minHeight: 0 }}>
                 {/* Deployment Status */}
                 {(isDeploying || deploymentStatus || deploymentError || fakeProgress > 0) && (
-                  <div className="mb-4">
+                  <div className="mb-4 shrink-0">
                     {/* Progress bar (fake/approximate) placed above the status box */}
                     {(isProgressVisible && (isDeploying || fakeProgress > 0)) && (
                       <div className="mb-2 relative">
@@ -1208,11 +1258,16 @@ provider "aws" {
                 <textarea
                   value={terraformFiles[activeFile as keyof typeof terraformFiles]}
                   onChange={(e) => handleFileContentChange(e.target.value)}
-                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none"
+                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none min-h-0"
                   placeholder="Start typing your Terraform configuration..."
                   spellCheck={false}
                 />
               </div>
+            </div>
+            
+            {/* Providers Pane - Bottom Section - Takes 40% of height */}
+            <div className="flex flex-col overflow-auto border-t border-gray-200" style={{ height: '40%', minHeight: '200px' }}>
+              <ProvidersPane currentProvider={provider} />
             </div>
           </aside>
         )}

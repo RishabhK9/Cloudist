@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { ReactFlowProvider } from "@xyflow/react"
 
-import { InfrastructureCanvas } from "@/components/infrastructure-canvas"
-import { ProviderSelection } from "@/components/provider-selection"
+import { InfrastructureCanvas } from "@/components/canvas/infrastructure-canvas"
+import { ProviderSelection } from "@/components/features/provider-selection"
 
 import {
   AlertDialog,

@@ -3,17 +3,14 @@
 import { useState, useCallback, useEffect } from "react";
 import { MessageSquare } from "lucide-react";
 import { ReactFlowProvider } from "@xyflow/react";
-import { ComponentPalette } from "@/components/component-palette";
-import { Canvas } from "@/components/canvas";
-import { PropertiesPanel } from "@/components/properties-panel";
-import { Toolbar } from "@/components/toolbar";
-import { ProjectTitleBar } from "@/components/project-title-bar";
-import { CreateNewProjectDialog } from "@/components/create-new-project-dialog";
-import {
-  OpenProjectDialog,
-  type Project,
-} from "@/components/open-project-dialog";
-import { SettingsDialog } from "@/components/settings-dialog";
+import { ComponentPalette } from "@/components/panels/component-palette";
+import { Canvas } from "@/components/canvas/canvas";
+import { PropertiesPanel } from "@/components/panels/properties-panel";
+import { Toolbar } from "@/components/layout/toolbar";
+import { ProjectTitleBar } from "@/components/layout/project-title-bar";
+import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-dialog";
+import { OpenProjectDialog, type Project } from "@/components/dialogs/open-project-dialog";
+import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";

@@ -10,7 +10,7 @@ import { Textarea } from "@/components/ui/textarea"
 import type { Edge, Node } from "@xyflow/react"
 import { CheckCircle, Copy, Download } from "lucide-react"
 import { useEffect, useState } from "react"
-import { TerraformGenerator } from "./terraform-generator"
+import { TerraformGenerator } from "@/components/utils/terraform-generator"
 
 interface TerraformExportDialogProps {
   provider: string

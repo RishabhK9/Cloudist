@@ -13,7 +13,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { CloudServiceNode } from "@/components/cloud-service-node"
+import { CloudServiceNode } from "@/components/canvas/cloud-service-node"
 import type { Block, Connection, BlockTemplate } from "@/types/infrastructure"
 import {
   ReactFlow,
@@ -293,7 +293,7 @@ export function Canvas({
         nodesConnectable={true}
         nodesDraggable={true}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} bgColor="#2C2C2C"/>
         <Controls />
       </ReactFlow>
 
