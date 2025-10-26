@@ -1194,7 +1194,6 @@ provider "aws" {
                   nodeTypes={createNodeTypes(handleNodeDoubleClick)}
                   edgeTypes={edgeTypes}
                   className="bg-gray-50"
-                  proOptions={{ hideAttribution: true }}
                   connectionLineStyle={{ 
                     stroke: "#a855f7", 
                     strokeWidth: 4,
