@@ -1,4 +1,4 @@
-import type { TerraformResource } from '@/components/terraform-generator'
+import type { TerraformResource } from '@/components/utils/terraform-generator'
 
 export interface NetworkRequirements {
   hasEC2: boolean

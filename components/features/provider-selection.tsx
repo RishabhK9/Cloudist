@@ -7,10 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { FaAws } from "react-icons/fa";
 import { SiGooglecloud } from "react-icons/si";
 import { VscAzure } from "react-icons/vsc";
-import { Database } from "lucide-react";
 
 
-type CloudProvider = "aws" | "gcp" | "azure" | "supabase"
+type CloudProvider = "aws" | "gcp" | "azure"
 
 interface ProviderSelectionProps {
   onProviderSelect: (provider: CloudProvider) => void
@@ -54,14 +53,6 @@ export function ProviderSelection({ onProviderSelect }: ProviderSelectionProps) 
       color: "#0078D4",
       available: false,
     },
-    {
-      id: "supabase" as const,
-      name: "Supabase",
-      description: "Open source Firebase alternative with PostgreSQL",
-      logo: Database,
-      color: "#3ECF8E",
-      available: true,
-    },
   ]
 
   return (
@@ -73,7 +64,7 @@ export function ProviderSelection({ onProviderSelect }: ProviderSelectionProps) 
         </p>
       </div>
 
-      <div className="grid md:grid-cols-2 lg:grid-cols-4 gap-6">
+      <div className="grid md:grid-cols-3 gap-6">
         {providers.map((provider) => (
           <Card
             key={provider.id}

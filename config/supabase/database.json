@@ -1,0 +1,71 @@
+{
+  "id": "database",
+  "name": "Database",
+  "icon": "/supabase/database.svg",
+  "category": "Database",
+  "description": "PostgreSQL database with real-time capabilities",
+  "terraformType": "",
+  "defaultConfig": {
+    "project_name": "cloudist-test",
+    "region": "us-east-1",
+    "plan": "free",
+    "db_password": "TheCloudist$Project",
+    "postgres_version": "Latest (Auto)"
+  },
+  "configSchema": {
+    "project_name": {
+      "type": "string",
+      "label": "Project Name",
+      "description": "Name of your Supabase project",
+      "required": true,
+      "validation": {
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "db_password": {
+      "type": "string",
+      "label": "Database Password",
+      "description": "Strong password for the postgres user (min 6 characters)",
+      "required": true,
+      "validation": {
+        "min": 6
+      }
+    },
+    "region": {
+      "type": "select",
+      "label": "Region",
+      "description": "Geographic region for your database",
+      "options": [
+        "us-east-1",
+        "us-west-1",
+        "us-west-2",
+        "eu-west-1",
+        "eu-west-2",
+        "eu-central-1",
+        "ap-southeast-1",
+        "ap-southeast-2",
+        "ap-northeast-1",
+        "ap-south-1",
+        "sa-east-1"
+      ],
+      "default": "us-east-1",
+      "required": true
+    },
+    "plan": {
+      "type": "select",
+      "label": "Pricing Plan",
+      "description": "Supabase pricing tier",
+      "options": ["free", "pro", "team", "enterprise"],
+      "default": "free",
+      "required": true
+    },
+    "postgres_version": {
+      "type": "select",
+      "label": "PostgreSQL Version",
+      "description": "Supabase automatically uses the latest stable version (informational only)",
+      "options": ["Latest (Auto)", "15.x", "14.x"],
+      "default": "Latest (Auto)",
+      "required": false
+    }
+  }
+}

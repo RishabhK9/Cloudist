@@ -3,7 +3,17 @@
 import React, { useCallback, useRef, useState, useEffect } from "react"
 import { Plus, Minus, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
-import { CloudServiceNode } from "@/components/cloud-service-node"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
+import { CloudServiceNode } from "@/components/canvas/cloud-service-node"
 import type { Block, Connection, BlockTemplate } from "@/types/infrastructure"
 import {
   ReactFlow,
@@ -71,15 +81,15 @@ const awsIconMap: Record<string, string> = {
   backupmanager: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
 }
 
-// Create node types for React Flow
-const createNodeTypes = (onNodeDoubleClick?: (nodeData: any) => void) => ({
-  cloudService: (props: any) => <CloudServiceNode {...props} onDoubleClick={onNodeDoubleClick} />,
-})
-
 const defaultEdgeOptions = {
   style: { strokeWidth: 3, stroke: 'hsl(var(--primary))' },
   type: 'smoothstep',
   animated: false,
+}
+
+// Define nodeTypes outside component to avoid recreation warnings
+const nodeTypes = {
+  cloudService: CloudServiceNode,
 }
 
 interface CanvasProps {
@@ -92,6 +102,7 @@ interface CanvasProps {
   onAddBlock: (block: Block) => void
   onAddConnection: (connection: Connection) => void
   onDeleteConnection: (id: string) => void
+  onDeleteBlock: (id: string) => void
   onZoomChange: (zoom: number) => void
 }
 
@@ -105,8 +116,11 @@ export function Canvas({
   onAddBlock,
   onAddConnection,
   onDeleteConnection,
+  onDeleteBlock,
   onZoomChange,
 }: CanvasProps) {
+  const [connectionToDelete, setConnectionToDelete] = useState<string | null>(null)
+
   // Convert blocks to React Flow nodes
   const initialNodes: Node[] = blocks.map((block) => ({
     id: block.id,
@@ -118,6 +132,7 @@ export function Canvas({
       provider: 'aws',
       icon: awsIconMap[block.type] || '☁️',
       config: block.config,
+      onDelete: () => onDeleteBlock(block.id),
     },
   }))
 
@@ -131,6 +146,8 @@ export function Canvas({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
 
   // Sync blocks and connections with React Flow nodes/edges only when they change externally
@@ -145,11 +162,12 @@ export function Canvas({
         provider: 'aws',
         icon: awsIconMap[block.type] || '☁️',
         config: block.config,
+        onDelete: () => onDeleteBlock(block.id),
       },
     }))
     
     setNodes(newNodes)
-  }, [blocks, setNodes])
+  }, [blocks, setNodes, onDeleteBlock])
 
   useEffect(() => {
     const newEdges: Edge[] = connections.map((conn) => ({
@@ -177,6 +195,10 @@ export function Canvas({
   // Handle new connections
   const onConnect: OnConnect = useCallback((connection: FlowConnection) => {
     if (connection.source && connection.target) {
+      // First, immediately update ReactFlow's edge state for instant visual feedback
+      setEdges((eds) => addEdge(connection, eds))
+      
+      // Then notify parent component for persistence
       const newConnection: Connection = {
         id: `conn-${Date.now()}`,
         from: connection.source,
@@ -184,7 +206,7 @@ export function Canvas({
       }
       onAddConnection(newConnection)
     }
-  }, [onAddConnection])
+  }, [setEdges, onAddConnection])
 
   // Handle drop events for adding new blocks
   const handleDrop = (e: React.DragEvent) => {
@@ -220,10 +242,15 @@ export function Canvas({
   // Handle edge deletion
   const handleEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.stopPropagation()
-    if (confirm("Delete this connection?")) {
-      onDeleteConnection(edge.id)
+    setConnectionToDelete(edge.id)
+  }, [])
+
+  const confirmDeleteConnection = () => {
+    if (connectionToDelete) {
+      onDeleteConnection(connectionToDelete)
+      setConnectionToDelete(null)
     }
-  }, [onDeleteConnection])
+  }
 
   const handleZoomIn = () => {
     onZoomChange(Math.min(zoom + 0.1, 2))
@@ -237,7 +264,7 @@ export function Canvas({
     onZoomChange(1)
   }
 
-  const nodeTypes = createNodeTypes()
+  // nodeTypes is now defined outside the component
 
   return (
     <div 
@@ -253,6 +280,7 @@ export function Canvas({
         onEdgesChange={onEdgesChange}
         onConnect={onConnect}
         onEdgeClick={handleEdgeClick}
+        onNodeClick={(_, node) => onSelectBlock(node.id)}
         nodeTypes={nodeTypes}
         defaultEdgeOptions={defaultEdgeOptions}
         className="canvas-grid w-full h-full"
@@ -265,7 +293,7 @@ export function Canvas({
         nodesConnectable={true}
         nodesDraggable={true}
       >
-        <Background variant={BackgroundVariant.Dots} gap={20} size={1} />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} bgColor="#2C2C2C"/>
         <Controls />
       </ReactFlow>
 
@@ -297,6 +325,27 @@ export function Canvas({
           ))}
         </div>
       </div>
+
+      {/* Delete Connection Confirmation Dialog */}
+      <AlertDialog open={!!connectionToDelete} onOpenChange={() => setConnectionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Connection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this connection? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteConnection}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Connection
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

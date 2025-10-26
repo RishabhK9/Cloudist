@@ -16,10 +16,16 @@ export interface AzureCredentials {
   subscriptionId: string
 }
 
+export interface SupabaseCredentials {
+  accessToken: string
+  organizationId?: string
+}
+
 export interface Credentials {
   aws?: AWSCredentials
   gcp?: GCPCredentials
   azure?: AzureCredentials
+  supabase?: SupabaseCredentials
 }
 
 export class CredentialManager {
@@ -196,6 +202,23 @@ export class CredentialManager {
     } else if (!/^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(credentials.subscriptionId)) {
       errors.push('Subscription ID should be a valid UUID')
     }
+    
+    return errors
+  }
+
+  /**
+   * Validate Supabase credentials format
+   */
+  static validateSupabaseCredentials(credentials: Partial<SupabaseCredentials>): string[] {
+    const errors: string[] = []
+    
+    if (!credentials.accessToken) {
+      errors.push('Access Token is required')
+    } else if (credentials.accessToken.length < 20) {
+      errors.push('Access Token appears to be invalid (too short)')
+    }
+    
+    // Organization ID is optional - will be fetched from API if not provided
     
     return errors
   }
