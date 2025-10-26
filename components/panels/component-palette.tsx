@@ -86,7 +86,7 @@ const awsIconMap: Record<string, string> = {
   supabase_auth: "/supabase/auth.svg",
   
   // Stripe
-  stripe_payment: "/stripe/payment.svg",
+  stripe_payment: "/stripe/stripe.svg",
 }
 
 const blockTemplates: BlockTemplate[] = [
@@ -235,7 +235,7 @@ const blockTemplates: BlockTemplate[] = [
   {
     type: "stripe_payment",
     name: "Stripe Payment",
-    icon: awsIconMap.stripe_payment,
+    icon: "/stripe/stripe.svg",
     category: "stripe",
     defaultConfig: { 
       name: "payment-gateway",
@@ -296,7 +296,7 @@ export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
             <AccordionItem value="aws" className="border-b-0">
               <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
                 <div className="flex items-center gap-2">
-                  <img src="/aws/icon.png" alt="AWS" className="w-5 h-5 object-contain" />
+                  <img src="/aws/aws.svg" alt="AWS" className="w-5 h-5 object-contain" />
                   <span>AWS</span>
                 </div>
               </AccordionTrigger>
@@ -399,7 +399,7 @@ export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
             <AccordionItem value="stripe" className="border-b-0">
               <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
                 <div className="flex items-center gap-2">
-                  <CreditCard className="w-5 h-5 text-[#635BFF]" />
+                  <img src="/stripe/stripe.svg" alt="Stripe" className="w-5 h-5 object-contain" />
                   <span>Stripe</span>
                 </div>
               </AccordionTrigger>
