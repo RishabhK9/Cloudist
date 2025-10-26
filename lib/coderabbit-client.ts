@@ -68,7 +68,7 @@ export class CodeRabbitClient {
    * Check if CodeRabbit API is configured
    */
   isConfigured(): boolean {
-    return this.apiKey.length > 0 && this.apiKey !== 'your_coderabbit_api_key_here';
+    return this.apiKey.length > 0;
   }
 
   /**
