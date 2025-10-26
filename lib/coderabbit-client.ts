@@ -1,6 +1,6 @@
 /**
  * CodeRabbit API Client
- * Official API documentation: https://docs.coderabbit.ai/api/
+ * Official API documentation: https://docs.coderabbit.ai/
  */
 
 export interface CodeRabbitReviewRequest {
