@@ -30,8 +30,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
   // Early return if data is not properly structured
   if (!data) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-2 min-w-[100px]">
-        <div className="text-center text-gray-500 text-xs">
+      <div className="bg-card border border-border rounded-lg shadow-sm p-2 min-w-[100px]">
+        <div className="text-center text-muted-foreground text-xs">
           Invalid
         </div>
       </div>
@@ -108,6 +108,23 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
     }
   }
 
+  const getSelectionBorderColor = (provider: string) => {
+    switch (provider) {
+      case 'aws':
+        return 'ring-orange-500'
+      case 'gcp':
+        return 'ring-blue-500'
+      case 'azure':
+        return 'ring-cyan-500'
+      case 'supabase':
+        return 'ring-green-500'
+      case 'stripe':
+        return 'ring-purple-500'
+      default:
+        return 'ring-gray-500'
+    }
+  }
+
   const handleDoubleClick = () => {
     if (onDoubleClick && nodeData) {
       onDoubleClick(nodeData)
@@ -115,7 +132,7 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
   }
 
   return (
-    <div className={`relative ${selected ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}>
+    <div className={`relative ${selected ? `ring-2 ${getSelectionBorderColor(nodeData.provider)} ring-offset-2 ring-offset-background` : ""}`}>
       {/* Delete button - only visible when selected */}
       {selected && nodeData.onDelete && (
         <Button
@@ -168,8 +185,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
         {isImageIcon(nodeData.icon) ? (
           <img src={nodeData.icon} alt={nodeData.name} className="w-18 h-18" />
         ) : (
-          <div className={`w-10 h-10 ${getNodeColor(nodeData.id, nodeData.provider)} flex items-center justify-center shadow-md`}>
-            <span className="text-gray-900 text-base font-bold">
+          <div className={`w-10 h-10 ${getNodeColor(nodeData.id, nodeData.provider)} flex items-center justify-center shadow-md rounded-lg`}>
+            <span className="text-white text-base font-bold">
               {getNodeIcon(nodeData.id, nodeData.provider)}
             </span>
           </div>

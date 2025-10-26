@@ -114,10 +114,10 @@ const LoadingState = () => (
               <div className="text-center space-y-4">
                 <Loader2 className="w-8 h-8 animate-spin mx-auto text-blue-500" />
                 <div className="space-y-2">
-                  <p className="text-sm font-medium text-gray-700">AI is reviewing your infrastructure</p>
-                  <p className="text-xs text-gray-500">This usually takes 10-20 seconds</p>
+                  <p className="text-sm font-medium text-foreground">AI is reviewing your infrastructure</p>
+                  <p className="text-xs text-muted-foreground">This usually takes 10-20 seconds</p>
                 </div>
-                <div className="flex items-center justify-center space-x-4 text-xs text-gray-400">
+                <div className="flex items-center justify-center space-x-4 text-xs text-muted-foreground">
                   <div className="flex items-center gap-1">
                     <Shield className="w-3 h-3" />
                     <span>Security</span>
@@ -148,8 +148,8 @@ const ErrorState = ({ error, onClose }: { error: string; onClose: () => void }) 
               There was an error analyzing your infrastructure.
             </DialogDescription>
         </DialogHeader>
-        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-800">{error}</p>
+        <div className="p-4 bg-destructive/10 border border-destructive/20 rounded-lg">
+            <p className="text-destructive">{error}</p>
         </div>
         <div className="flex justify-end">
             <Button onClick={onClose}>Close</Button>
@@ -196,7 +196,7 @@ const OverviewTab = ({ analysis }: { analysis: AIAnalysis }) => (
         <div className="space-y-6">
           <div>
             <h3 className="font-semibold mb-3 text-lg">Summary</h3>
-            <p className="text-gray-700 leading-relaxed">{analysis.summary}</p>
+            <p className="text-foreground leading-relaxed">{analysis.summary}</p>
           </div>
 
           <div>

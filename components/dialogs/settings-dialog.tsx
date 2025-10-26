@@ -145,7 +145,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       <DialogContent className="max-w-3xl max-h-[90vh]">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
-            <Shield className="w-5 h-5 text-purple-600" />
+            <Shield className="w-5 h-5 text-primary" />
             Settings
           </DialogTitle>
           <DialogDescription>
@@ -169,7 +169,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Access Key ID</label>
+                    <label className="text-sm font-medium text-foreground">Access Key ID</label>
                     <Input 
                       placeholder="AKIA..." 
                       className="mt-1" 
@@ -178,7 +178,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Secret Access Key</label>
+                    <label className="text-sm font-medium text-foreground">Secret Access Key</label>
                     <Input 
                       type="password" 
                       placeholder="••••••••••••••••" 
@@ -189,7 +189,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Region</label>
+                  <label className="text-sm font-medium text-foreground">Region</label>
                   <Select 
                     value={awsCredentials.region || 'us-east-1'} 
                     onValueChange={(value) => setAwsCredentials(prev => ({ ...prev, region: value }))}
@@ -218,7 +218,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 
                 {/* Error messages */}
                 {credentialErrors.aws && credentialErrors.aws.length > 0 && (
-                  <div className="text-sm text-red-600 bg-red-50 p-3 rounded-md border border-red-200">
+                  <div className="text-sm text-destructive bg-destructive/10 p-3 rounded-md border border-destructive/20">
                     {credentialErrors.aws.map((error, index) => (
                       <div key={index}>• {error}</div>
                     ))}
@@ -233,7 +233,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                 )}
                 
                 <Button 
-                  className="w-full bg-purple-600 hover:bg-purple-700" 
+                  className="w-full bg-primary hover:bg-primary/90" 
                   onClick={handleSaveAWSCredentials}
                   disabled={credentialStatus.aws === 'saving' || credentialStatus.aws === 'testing'}
                 >
@@ -259,7 +259,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Service Account Key (JSON)</label>
+                  <label className="text-sm font-medium text-foreground">Service Account Key (JSON)</label>
                   <Input 
                     type="file" 
                     accept=".json" 
@@ -268,7 +268,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Project ID</label>
+                  <label className="text-sm font-medium text-foreground">Project ID</label>
                   <Input 
                     placeholder="my-gcp-project" 
                     className="mt-1"
@@ -293,7 +293,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-2 gap-4">
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Client ID</label>
+                    <label className="text-sm font-medium text-foreground">Client ID</label>
                     <Input 
                       placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" 
                       className="mt-1"
@@ -301,7 +301,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                     />
                   </div>
                   <div>
-                    <label className="text-sm font-medium text-gray-700">Client Secret</label>
+                    <label className="text-sm font-medium text-foreground">Client Secret</label>
                     <Input 
                       type="password" 
                       placeholder="••••••••••••••••" 
@@ -311,7 +311,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   </div>
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Tenant ID</label>
+                  <label className="text-sm font-medium text-foreground">Tenant ID</label>
                   <Input 
                     placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" 
                     className="mt-1"
@@ -319,7 +319,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   />
                 </div>
                 <div>
-                  <label className="text-sm font-medium text-gray-700">Subscription ID</label>
+                  <label className="text-sm font-medium text-foreground">Subscription ID</label>
                   <Input 
                     placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" 
                     className="mt-1"

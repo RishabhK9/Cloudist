@@ -73,22 +73,22 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-[425px] bg-white border-purple-200 shadow-lg">
+      <DialogContent className="sm:max-w-[425px] bg-card border-border shadow-lg">
         <DialogHeader className="pb-6">
-          <DialogTitle className="flex items-center gap-2 text-black">
-            <div className="w-8 h-8 bg-purple-600 rounded-lg flex items-center justify-center">
-              <FolderPlus className="w-4 h-4 text-white" />
+          <DialogTitle className="flex items-center gap-2 text-foreground">
+            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <FolderPlus className="w-4 h-4 text-primary-foreground" />
             </div>
             Create New Project
           </DialogTitle>
-          <DialogDescription className="text-gray-600">
+          <DialogDescription className="text-muted-foreground">
             Create a new infrastructure project to start designing your cloud architecture.
           </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit}>
           <div className="grid gap-6 py-4">
             <div className="grid gap-3">
-              <Label htmlFor="name" className="text-black font-medium">Project Name *</Label>
+              <Label htmlFor="name" className="text-foreground font-medium">Project Name *</Label>
               <Input
                 id="name"
                 placeholder="Enter project name"
@@ -96,11 +96,11 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
                 onChange={(e) => setName(e.target.value)}
                 disabled={isCreating}
                 required
-                className="bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                className="bg-input text-foreground border-border focus:border-primary focus:ring-primary"
               />
             </div>
             <div className="grid gap-3">
-              <Label htmlFor="description" className="text-black font-medium">Description</Label>
+              <Label htmlFor="description" className="text-foreground font-medium">Description</Label>
               <Textarea
                 id="description"
                 placeholder="Brief description of your project (optional)"
@@ -108,11 +108,11 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
                 onChange={(e) => setDescription(e.target.value)}
                 disabled={isCreating}
                 rows={3}
-                className="resize-none bg-white text-gray-900 border-gray-300 focus:border-purple-500 focus:ring-purple-500"
+                className="resize-none bg-input text-foreground border-border focus:border-primary focus:ring-primary"
               />
             </div>
           </div>
-          <DialogFooter className="pt-6 border-t border-gray-200">
+          <DialogFooter className="pt-6 border-t border-border">
             <Button 
               type="button" 
               variant="outline" 
@@ -124,7 +124,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
             <Button 
               type="submit" 
               disabled={!name.trim() || isCreating}
-              className="bg-purple-600 hover:bg-purple-700 text-white font-medium"
+              className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium"
             >
               {isCreating && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
               Create Project

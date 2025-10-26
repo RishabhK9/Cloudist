@@ -4,39 +4,39 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.09 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.09 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.09 0 0);
-  --primary: oklch(0.09 0 0);
+  --background: oklch(0.15 0 0);
+  --foreground: oklch(0.98 0 0);
+  --card: oklch(0.12 0 0);
+  --card-foreground: oklch(0.98 0 0);
+  --popover: oklch(0.12 0 0);
+  --popover-foreground: oklch(0.98 0 0);
+  --primary: oklch(0.6 0.2 280);
   --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.09 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.09 0 0);
+  --secondary: oklch(0.2 0 0);
+  --secondary-foreground: oklch(0.98 0 0);
+  --muted: oklch(0.2 0 0);
+  --muted-foreground: oklch(0.65 0 0);
+  --accent: oklch(0.2 0 0);
+  --accent-foreground: oklch(0.98 0 0);
   --destructive: oklch(0.628 0.258 29.234);
   --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.89 0 0);
-  --input: oklch(0.96 0 0);
-  --ring: oklch(0.09 0 0);
+  --border: oklch(0.24 0 0);
+  --input: oklch(0.2 0 0);
+  --ring: oklch(0.6 0.2 280);
   --chart-1: oklch(0.646 0.222 41.116);
   --chart-2: oklch(0.6 0.118 184.704);
   --chart-3: oklch(0.398 0.07 227.392);
   --chart-4: oklch(0.828 0.189 84.429);
   --chart-5: oklch(0.769 0.188 70.08);
   --radius: 0.5rem;
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.09 0 0);
-  --sidebar-primary: oklch(0.09 0 0);
+  --sidebar: oklch(0.12 0 0);
+  --sidebar-foreground: oklch(0.98 0 0);
+  --sidebar-primary: oklch(0.6 0.2 280);
   --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.09 0 0);
-  --sidebar-border: oklch(0.89 0 0);
-  --sidebar-ring: oklch(0.09 0 0);
+  --sidebar-accent: oklch(0.2 0 0);
+  --sidebar-accent-foreground: oklch(0.98 0 0);
+  --sidebar-border: oklch(0.24 0 0);
+  --sidebar-ring: oklch(0.6 0.2 280);
 }
 
 .dark {
@@ -131,9 +131,9 @@
 
 /* Custom grid pattern for background */
 .grid-pattern {
-  background-image: linear-gradient(hsl(var(--muted-foreground) / 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--muted-foreground) / 0.1) 1px, transparent 1px);
+  background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.3) 1px, transparent 1px);
   background-size: 20px 20px;
+  background-color: hsl(var(--background));
 }
 
 /* ReactFlow Controls styling */
@@ -142,16 +142,16 @@
   bottom: 20px !important;
   left: 20px !important;
   z-index: 1000 !important;
-  background: white !important;
-  border: 1px solid #e5e7eb !important;
+  background: hsl(var(--card)) !important;
+  border: 1px solid hsl(var(--border)) !important;
   border-radius: 8px !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+  box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.3), 0 2px 4px -1px rgba(0, 0, 0, 0.2) !important;
 }
 
 .react-flow__controls-button {
-  background: white !important;
+  background: hsl(var(--card)) !important;
   border: none !important;
-  color: #374151 !important;
+  color: hsl(var(--foreground)) !important;
   width: 32px !important;
   height: 32px !important;
   display: flex !important;
@@ -162,12 +162,12 @@
 }
 
 .react-flow__controls-button:hover {
-  background: #f3f4f6 !important;
-  color: #111827 !important;
+  background: hsl(var(--accent)) !important;
+  color: hsl(var(--accent-foreground)) !important;
 }
 
 .react-flow__controls-button:active {
-  background: #e5e7eb !important;
+  background: hsl(var(--muted)) !important;
 }
 
 .react-flow__controls-button svg {

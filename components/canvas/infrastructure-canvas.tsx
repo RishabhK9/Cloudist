@@ -37,7 +37,10 @@ import {
   Pin,
   Brain,
   Save,
-  Clock
+  Clock,
+  Plus,
+  FolderOpen,
+  Settings
 } from "lucide-react"
 import GlassyPaneContainer from '@/src/cedar/components/containers/GlassyPaneContainer'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
@@ -946,12 +949,12 @@ provider "aws" {
   }, [deleteSelectedElements, undo, redo])
 
   return (
-    <div className="h-screen bg-white flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       {/* Top Header */}
-      <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4">
+      <header className="h-14 border-b border-border bg-card flex items-center px-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-4 h- mr-2" />
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-foreground hover:text-foreground">
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
           <div className="flex items-center gap-2">
@@ -969,7 +972,7 @@ provider "aws" {
               size="sm" 
               onClick={saveCurrentState}
               disabled={!hasUnsavedChanges()}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-foreground hover:text-foreground"
             >
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? 'Saving...' : 'Save'}
@@ -981,46 +984,86 @@ provider "aws" {
             />
           </div>
         </div>
+        
+        {/* Center: Project Name */}
+        <div className="flex-1 flex items-center justify-center">
+          <h1 className="text-lg font-semibold text-foreground">Untitled Project</h1>
+        </div>
+        
+        {/* Right: Action Buttons */}
+        <div className="flex items-center gap-2">
+          <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground">
+            <Plus className="w-4 h-4 mr-2" />
+            New Project
+          </Button>
+          <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground">
+            <FolderOpen className="w-4 h-4 mr-2" />
+            Open Project
+          </Button>
+          <Button variant="ghost" size="sm" className="text-foreground hover:text-foreground">
+            <Settings className="w-4 h-4" />
+          </Button>
+          <Button 
+            className="bg-primary hover:bg-primary/90 text-primary-foreground"
+            onClick={handleAIReview}
+          >
+            <Brain className="w-4 h-4 mr-2" />
+            Code Review
+          </Button>
+          <Button 
+            className="bg-blue-600 hover:bg-blue-700 text-white"
+            onClick={handleDeploy}
+            disabled={isDeploying}
+          >
+            <Play className="w-4 h-4 mr-2" />
+            Deploy
+          </Button>
+        </div>
       </header>
 
       <div className="flex-1 flex">
         {/* Left Sidebar */}
-        <aside className="w-80 border-r border-gray-200 bg-white overflow-y-auto">
+        <aside className="w-80 border-r border-border bg-card overflow-y-auto">
           <div className="p-4 space-y-4">
+            
+            {/* Components Header */}
+            <div>
+              <h2 className="text-sm font-semibold text-foreground mb-4">Components</h2>
+            </div>
             
             {/* Cloud Services */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">Cloud Services</span>
+                  <span className="font-medium text-foreground">Cloud Services</span>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
                 {!servicesLoaded ? (
                   <div className="col-span-3 flex items-center justify-center p-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                    <span className="ml-2 text-sm text-gray-600">Loading services...</span>
+                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary"></div>
+                    <span className="ml-2 text-sm text-muted-foreground">Loading services...</span>
                   </div>
                 ) : services.length === 0 ? (
                   <div className="col-span-3 flex items-center justify-center p-4">
-                    <span className="text-sm text-gray-600">No services available</span>
+                    <span className="text-sm text-muted-foreground">No services available</span>
                   </div>
                 ) : (
                   services.map((service) => (
                     <div
                       key={service.id}
-                      className="flex flex-col items-center p-2 hover:bg-purple-50 rounded cursor-grab active:cursor-grabbing border border-gray-200 hover:border-purple-200 transition-colors"
+                      className="flex flex-col items-center p-2 hover:bg-accent rounded cursor-grab active:cursor-grabbing border border-border hover:border-primary transition-colors"
                       draggable
                       onDragStart={(event) => onDragStart(event, service)}
                     >
-                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-1">
+                      <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center shadow-sm mb-1">
                         {service.icon.startsWith('/') ? (
                           <img src={service.icon} alt={service.name} className="w-6 h-6" />
                         ) : (
                           <span className="text-lg">{service.icon}</span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-700 text-center leading-tight">{service.name}</span>
+                      <span className="text-xs text-foreground text-center leading-tight">{service.name}</span>
                     </div>
                   ))
                 )}
@@ -1028,16 +1071,16 @@ provider "aws" {
             </div>
 
             {/* Node and edge summary */}
-            <div className="mt-auto pt-4 border-t border-gray-200">
-              <div className="text-xs text-gray-500 mb-2">
+            <div className="mt-auto pt-4 border-t border-border">
+              <div className="text-xs text-muted-foreground mb-2">
                 Number of nodes: {nodes.length}
               </div>
-              <div className="text-xs text-gray-500 mb-2">
+              <div className="text-xs text-muted-foreground mb-2">
                 Number of edges: {edges.length}
               </div>
               {(selectedNodes.length > 0 || selectedEdges.length > 0) && (
                 <div className="mb-2">
-                  <div className="text-xs text-red-600 mb-1">
+                  <div className="text-xs text-destructive mb-1">
                     Selected: {selectedNodes.length} node{selectedNodes.length !== 1 ? 's' : ''}, {selectedEdges.length} edge{selectedEdges.length !== 1 ? 's' : ''}
                   </div>
                   <Button 
@@ -1058,7 +1101,7 @@ provider "aws" {
         <main className="flex-1 flex flex-col">
 
           {/* Canvas Area */}
-          <div className="flex-1 relative bg-gray-50">
+          <div className="flex-1 relative bg-background">
             <div className="h-full">
               <ReactFlowProvider>
                 <ReactFlow
@@ -1076,7 +1119,7 @@ provider "aws" {
                   onSelectionChange={handleSelectionChange}
                   nodeTypes={createNodeTypes(handleNodeDoubleClick)}
                   // edgeTypes={createEdgeTypes()}
-                  className="bg-gray-50"
+                  className="bg-background"
                   connectionLineStyle={{ stroke: "#666", strokeWidth: 2 }}
                   defaultEdgeOptions={defaultEdgeOptions}
                   // Increase the connection radius so users don't have to be pixel-perfect when
@@ -1101,8 +1144,8 @@ provider "aws" {
                     variant={BackgroundVariant.Dots} 
                     gap={20} 
                     size={2} 
-                    color="#9ca3af"
-                    style={{ backgroundColor: '#f9fafb' }}
+                    color="hsl(var(--muted-foreground) / 0.3)"
+                    style={{ backgroundColor: 'hsl(var(--background))' }}
                   />
                   <Controls />
                 </ReactFlow>
@@ -1141,45 +1184,45 @@ provider "aws" {
           />
         ) : (
           <aside 
-            className="border-l border-gray-200 bg-gray-50 text-gray-900 flex flex-col relative h-full"
+            className="border-l border-border bg-card text-foreground flex flex-col relative h-full"
             style={{ width: `${rightPanelWidth}px` }}
           >
             {/* Resize Handle */}
             <div
-              className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-50"
+              className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-primary transition-colors z-50"
               onMouseDown={handleMouseDown}
               style={{ 
                 width: '4px', 
                 marginLeft: '-2px',
-                backgroundColor: isResizing ? '#3b82f6' : 'transparent'
+                backgroundColor: isResizing ? 'hsl(var(--primary))' : 'transparent'
               }}
             />
             {/* Terraform Code Section - Takes up flex space */}
             <div className="flex flex-col overflow-hidden" style={{ flex: '3 1 0', minHeight: '300px' }}>
               {/* Code Editor Header */}
-              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50 shrink-0">
+              <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-card shrink-0">
                 <div className="flex items-center gap-2">
                   <Code className="w-4 h-4" />
                   <Select value={activeFile} onValueChange={handleFileChange}>
-                    <SelectTrigger className="w-44 bg-gray-100 border-gray-300 text-gray-900">
+                    <SelectTrigger className="w-44 bg-input border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-100 border-gray-300">
-                      <SelectItem value="main.tf" className="text-gray-900 hover:bg-gray-200">main.tf</SelectItem>
-                      <SelectItem value="variables.tf" className="text-gray-900 hover:bg-gray-200">variables.tf</SelectItem>
-                      <SelectItem value="outputs.tf" className="text-gray-900 hover:bg-gray-200">outputs.tf</SelectItem>
-                      <SelectItem value="providers.tf" className="text-gray-900 hover:bg-gray-200">providers.tf</SelectItem>
+                    <SelectContent className="bg-popover border-border">
+                      <SelectItem value="main.tf" className="text-foreground hover:bg-accent">main.tf</SelectItem>
+                      <SelectItem value="variables.tf" className="text-foreground hover:bg-accent">variables.tf</SelectItem>
+                      <SelectItem value="outputs.tf" className="text-foreground hover:bg-accent">outputs.tf</SelectItem>
+                      <SelectItem value="providers.tf" className="text-foreground hover:bg-accent">providers.tf</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => handleDownloadTerraformCode(activeFile)} variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
+                  <Button onClick={() => handleDownloadTerraformCode(activeFile)} variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Download className="w-4 h-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-gray-600 hover:text-gray-900"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={handleDeploy}
                     disabled={isDeploying}
                   >
@@ -1189,7 +1232,7 @@ provider "aws" {
               </div>
 
               {/* Code Content */}
-              <div className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col" style={{ minHeight: 0 }}>
+              <div className="flex-1 overflow-auto p-4 bg-card flex flex-col" style={{ minHeight: 0 }}>
                 {/* Deployment Status */}
                 {(isDeploying || deploymentStatus || deploymentError || fakeProgress > 0) && (
                   <div className="mb-4 shrink-0">
@@ -1198,43 +1241,43 @@ provider "aws" {
                       <div className="mb-2 relative">
                         <div className="absolute top-0 right-0">
                           <button
-                            className="text-xs text-gray-500 hover:text-gray-700 p-1"
+                            className="text-xs text-muted-foreground hover:text-foreground p-1"
                             onClick={() => setIsProgressVisible(false)}
                             aria-label="Close progress"
                           >
                             ×
                           </button>
                         </div>
-                        <div className="text-xs text-gray-600 mb-1">Deployment progress</div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="text-xs text-muted-foreground mb-1">Deployment progress</div>
+                        <div className="w-full bg-muted rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full transition-all duration-700"
                             style={{ width: `${Math.min(100, Math.max(0, Math.round(fakeProgress)))}%` }}
                           />
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">{Math.round(fakeProgress)}%</div>
+                        <div className="text-xs text-muted-foreground mt-1">{Math.round(fakeProgress)}%</div>
                       </div>
                     )}
 
-                    <div className="p-3 bg-white rounded-lg border">
+                    <div className="p-3 bg-card rounded-lg border border-border">
                     {isDeploying && deploymentStatus && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-foreground">
                             {deploymentStatus.message}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {deploymentStatus.progress}%
                           </span>
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-muted rounded-full h-2">
                           <div 
                             className="bg-blue-600 h-2 rounded-full transition-all duration-300"
                             style={{ width: `${deploymentStatus.progress}%` }}
                           ></div>
                         </div>
                         {deploymentStatus.logs.length > 0 && (
-                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-20 overflow-y-auto">
+                          <div className="text-xs text-muted-foreground bg-muted p-2 rounded max-h-20 overflow-y-auto">
                             {deploymentStatus.logs.slice(-3).map((log, index) => (
                               <div key={index} className="mb-1">{log}</div>
                             ))}
@@ -1244,7 +1287,7 @@ provider "aws" {
                     )}
                     
                     {deploymentError && (
-                      <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                      <div className="text-sm text-destructive bg-destructive/10 p-2 rounded">
                         <div className="font-medium">Deployment Error:</div>
                         <div>{deploymentError}</div>
                       </div>
@@ -1270,7 +1313,7 @@ provider "aws" {
                 <textarea
                   value={terraformFiles[activeFile as keyof typeof terraformFiles]}
                   onChange={(e) => handleFileContentChange(e.target.value)}
-                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none min-h-0"
+                  className="terraform-editor flex-1 bg-card text-sm text-foreground resize-none border-none outline-none min-h-0"
                   placeholder="Start typing your Terraform configuration..."
                   spellCheck={false}
                 />
@@ -1298,18 +1341,18 @@ provider "aws" {
       {/* Floating Chat Widget */}
       <div className="fixed bottom-6 right-6 z-50">
         {isChatOpen ? (
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-[520px] h-[500px] flex flex-col">
-            <div className="flex items-center justify-between p-3 border-b border-gray-200">
+          <div className="bg-card rounded-lg shadow-lg border border-border w-[520px] h-[500px] flex flex-col">
+            <div className="flex items-center justify-between p-3 border-b border-border">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">AI Assistant - Rex</span>
+                <span className="font-medium text-foreground">AI Assistant - Rex</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsChatOpen(false)}
-                className="h-6 w-6 p-0 hover:bg-gray-100"
+                className="h-6 w-6 p-0 hover:bg-accent"
               >
-                <span className="text-gray-500 text-lg leading-none">×</span>
+                <span className="text-muted-foreground text-lg leading-none">×</span>
               </Button>
             </div>
             <div className="flex-1 overflow-hidden">

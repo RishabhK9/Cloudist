@@ -274,29 +274,29 @@ export function Dashboard() {
   }
 
   return (
-    <div className="flex h-screen bg-white">
+    <div className="flex h-screen bg-background">
       {/* Sidebar */}
-      <div className="w-64 bg-white border-r border-gray-200 flex flex-col relative z-10">
+      <div className="w-64 bg-card border-r border-border flex flex-col relative z-10">
         {/* Logo */}
-        <div className="p-6 border-b border-gray-200">
+        <div className="p-6 border-b border-border">
           <div className="flex items-center gap-2">
-            <div className="w-12 h-12 bg-purple-600 rounded-lg flex items-center justify-center overflow-hidden">
+            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
               <Image
                 src="/logo/image.png"
-                alt="InfraBlocks Logo"
+                alt="Cloudist Logo"
                 width={48}
                 height={48}
                 className="object-cover"
               />
             </div>
-            <span className="font-semibold text-xl text-gray-900">InfraBlocks</span>
+            <span className="font-semibold text-xl text-foreground">Cloudist</span>
           </div>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 p-4 overflow-y-auto relative" role="navigation" aria-label="Main navigation">
           <div className="space-y-1">
-            <div className="text-xs font-medium text-gray-500 uppercase tracking-wider mb-3">
+            <div className="text-xs font-medium text-muted-foreground uppercase tracking-wider mb-3">
               MY ORGANIZATION
             </div>
             {sidebarItems.map((item) => (
@@ -307,10 +307,10 @@ export function Dashboard() {
                   handleTabChange(item.id)
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative z-20 cursor-pointer select-none",
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative z-20 cursor-pointer select-none",
                   activeTab === item.id
-                    ? "bg-purple-100 text-purple-700 shadow-sm ring-1 ring-purple-200"
-                    : "text-gray-600 hover:text-gray-900 hover:bg-gray-50 active:bg-gray-100",
+                    ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20"
+                    : "text-muted-foreground hover:text-foreground hover:bg-accent active:bg-accent",
                 )}
                 aria-pressed={activeTab === item.id}
                 aria-label={`Navigate to ${item.label}`}
@@ -332,26 +332,26 @@ export function Dashboard() {
       {/* Main Content */}
       <div className="flex-1 flex flex-col relative z-0">
         {/* Header */}
-        <header className="h-16 border-b border-gray-200 bg-white px-6 flex items-center justify-between">
+        <header className="h-16 border-b border-border bg-card px-6 flex items-center justify-between">
         </header>
 
         {/* Content Area */}
-        <main className="flex-1 p-6 bg-gray-50 overflow-y-auto">
+        <main className="flex-1 p-6 bg-background overflow-y-auto">
           {activeTab === "home" && (
             <div className="space-y-8">
               {/* Projects Section */}
               <div className="space-y-4">
                 <div className="flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <div className="w-6 h-6 bg-purple-100 rounded flex items-center justify-center">
-                      <Folder className="w-4 h-4 text-purple-600" />
+                    <div className="w-6 h-6 bg-primary/10 rounded flex items-center justify-center">
+                      <Folder className="w-4 h-4 text-primary" />
                     </div>
-                    <h2 className="text-lg font-semibold text-gray-900">Projects</h2>
+                    <h2 className="text-lg font-semibold text-foreground">Projects</h2>
                     <Badge variant="secondary">{filteredProjects.length}</Badge>
                   </div>
                   <Button 
                     onClick={() => setShowCreateDialog(true)}
-                    className="bg-purple-600 hover:bg-purple-700 text-white font-medium px-4 py-2 shadow-sm"
+                    className="bg-primary hover:bg-primary/90 text-primary-foreground font-medium px-4 py-2 shadow-sm"
                   >
                     <Plus className="w-4 h-4 mr-2" />
                     Create Project
@@ -362,15 +362,15 @@ export function Dashboard() {
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
                   {/* Add Project Card */}
                   <Card
-                    className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-dashed border-purple-300 bg-gradient-to-br from-purple-50 to-white hover:border-purple-400 hover:bg-purple-100 hover:shadow-purple-100"
+                    className="cursor-pointer hover:shadow-lg transition-all duration-200 border-2 border-dashed border-primary/30 bg-gradient-to-br from-primary/5 to-card hover:border-primary/50 hover:bg-primary/10 hover:shadow-primary/20"
                     onClick={() => setShowCreateDialog(true)}
                   >
                     <CardContent className="flex flex-col items-center justify-center py-12">
-                      <div className="w-16 h-16 bg-purple-600 rounded-full flex items-center justify-center mb-4 shadow-lg">
-                        <Plus className="w-8 h-8 text-white" />
+                      <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mb-4 shadow-lg">
+                        <Plus className="w-8 h-8 text-primary-foreground" />
                       </div>
-                      <h3 className="text-xl font-bold text-gray-900 mb-2">Create New Project</h3>
-                      <p className="text-gray-600 text-center text-sm font-medium">
+                      <h3 className="text-xl font-bold text-foreground mb-2">Create New Project</h3>
+                      <p className="text-muted-foreground text-center text-sm font-medium">
                         Start building your infrastructure
                       </p>
                     </CardContent>
@@ -379,7 +379,7 @@ export function Dashboard() {
                   {filteredProjects.map((project) => (
                      <Card
                        key={project.id}
-                       className="cursor-pointer hover:shadow-md transition-shadow bg-white"
+                       className="cursor-pointer hover:shadow-md transition-shadow bg-card"
                        onClick={(e) => {
                          // Only handle card click if not clicking on dropdown
                          if (!(e.target as HTMLElement).closest('[data-radix-dropdown-menu-trigger]')) {
@@ -390,16 +390,16 @@ export function Dashboard() {
                       <CardHeader className="pb-3">
                          <div className="flex items-start justify-between">
                            <div className="flex-1">
-                             <CardTitle className="text-base text-gray-900">{project.name}</CardTitle>
+                             <CardTitle className="text-base text-foreground">{project.name}</CardTitle>
                              {project.description && (
-                               <CardDescription className="mt-1 text-gray-600">{project.description}</CardDescription>
+                               <CardDescription className="mt-1 text-muted-foreground">{project.description}</CardDescription>
                              )}
                            </div>
                            <div className="relative" data-dropdown>
                              <Button 
                                variant="ghost" 
                                size="sm" 
-                               className="hover:bg-gray-100"
+                               className="hover:bg-accent"
                                onClick={(e) => {
                                  e.stopPropagation()
                                  setOpenDropdownId(openDropdownId === project.id ? null : project.id)
@@ -410,9 +410,9 @@ export function Dashboard() {
                              </Button>
                              
                              {openDropdownId === project.id && (
-                               <div className="absolute right-0 top-8 z-[100] min-w-[160px] bg-white border border-gray-200 shadow-lg rounded-md" data-dropdown>
+                               <div className="absolute right-0 top-8 z-[100] min-w-[160px] bg-popover border border-border shadow-lg rounded-md" data-dropdown>
                                  <div
-                                   className="flex items-center px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                                   className="flex items-center px-3 py-2 text-sm hover:bg-accent cursor-pointer"
                                    onClick={(e) => {
                                      e.stopPropagation()
                                      console.log('Open project clicked')
@@ -424,7 +424,7 @@ export function Dashboard() {
                                    Open Project
                                  </div>
                                  <div
-                                   className="flex items-center px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer"
+                                   className="flex items-center px-3 py-2 text-sm hover:bg-accent cursor-pointer"
                                    onClick={(e) => {
                                      e.stopPropagation()
                                      console.log('Duplicate clicked')
@@ -435,9 +435,9 @@ export function Dashboard() {
                                    <Copy className="w-4 h-4 mr-2" />
                                    Duplicate
                                  </div>
-                                 <div className="border-t border-gray-200 my-1"></div>
+                                 <div className="border-t border-border my-1"></div>
                                  <div
-                                   className="flex items-center px-3 py-2 text-sm hover:bg-gray-100 cursor-pointer text-red-600"
+                                   className="flex items-center px-3 py-2 text-sm hover:bg-accent cursor-pointer text-destructive"
                                    onClick={(e) => {
                                      e.stopPropagation()
                                      console.log('Delete clicked')
@@ -456,17 +456,17 @@ export function Dashboard() {
                       <CardContent>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-600">Architectures</span>
-                            <span className="font-medium text-gray-900">{project.architectures}</span>
+                            <span className="text-muted-foreground">Architectures</span>
+                            <span className="font-medium text-foreground">{project.architectures}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            {/* <span className="text-gray-600">Last modified</span>
-                            <span className="font-medium text-gray-900">{project.lastModified}</span> */}
+                            {/* <span className="text-muted-foreground">Last modified</span>
+                            <span className="font-medium text-foreground">{project.lastModified}</span> */}
                           </div>
                           {project.provider && (
                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-gray-600">Provider</span>
-                              <Badge variant="outline" className="text-xs text-gray-700 border-gray-300">
+                              <span className="text-muted-foreground">Provider</span>
+                              <Badge variant="outline" className="text-xs text-foreground border-border">
                                 {project.provider.toUpperCase()}
                               </Badge>
                             </div>
@@ -484,8 +484,8 @@ export function Dashboard() {
           {activeTab === "settings" && (
             <div className="space-y-6 max-w-4xl">
               <div className="space-y-4">
-                <h2 className="text-lg font-semibold text-gray-900">Cloud Provider Credentials</h2>
-                <p className="text-sm text-gray-600">Configure your cloud provider credentials to deploy architectures.</p>
+                <h2 className="text-lg font-semibold text-foreground">Cloud Provider Credentials</h2>
+                <p className="text-sm text-muted-foreground">Configure your cloud provider credentials to deploy architectures.</p>
               </div>
 
               <div className="space-y-4">
@@ -503,7 +503,7 @@ export function Dashboard() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Access Key ID</label>
+                        <label className="text-sm font-medium text-foreground">Access Key ID</label>
                         <Input 
                           placeholder="AKIA..." 
                           className="mt-1" 
@@ -512,7 +512,7 @@ export function Dashboard() {
                         />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Secret Access Key</label>
+                        <label className="text-sm font-medium text-foreground">Secret Access Key</label>
                         <Input 
                           type="password" 
                           placeholder="••••••••••••••••" 
@@ -523,7 +523,7 @@ export function Dashboard() {
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Region</label>
+                      <label className="text-sm font-medium text-foreground">Region</label>
                       <Select 
                         value={awsCredentials.region || 'us-east-1'} 
                         onValueChange={(value) => setAwsCredentials(prev => ({ ...prev, region: value }))}
@@ -552,7 +552,7 @@ export function Dashboard() {
                     
                     {/* Error messages */}
                     {credentialErrors.aws && credentialErrors.aws.length > 0 && (
-                      <div className="text-sm text-red-600">
+                      <div className="text-sm text-destructive">
                         {credentialErrors.aws.map((error, index) => (
                           <div key={index}>• {error}</div>
                         ))}
@@ -593,11 +593,11 @@ export function Dashboard() {
                   </CardHeader>
                   <CardContent className="space-y-4">
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Service Account Key</label>
+                      <label className="text-sm font-medium text-foreground">Service Account Key</label>
                       <Input type="file" accept=".json" className="mt-1" />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Project ID</label>
+                      <label className="text-sm font-medium text-foreground">Project ID</label>
                       <Input placeholder="my-gcp-project" className="mt-1" />
                     </div>
                     <Button className="w-full">Save GCP Credentials</Button>
@@ -618,20 +618,20 @@ export function Dashboard() {
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-2 gap-4">
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Client ID</label>
+                        <label className="text-sm font-medium text-foreground">Client ID</label>
                         <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="mt-1" />
                       </div>
                       <div>
-                        <label className="text-sm font-medium text-gray-700">Client Secret</label>
+                        <label className="text-sm font-medium text-foreground">Client Secret</label>
                         <Input type="password" placeholder="••••••••••••••••" className="mt-1" />
                       </div>
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Tenant ID</label>
+                      <label className="text-sm font-medium text-foreground">Tenant ID</label>
                       <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="mt-1" />
                     </div>
                     <div>
-                      <label className="text-sm font-medium text-gray-700">Subscription ID</label>
+                      <label className="text-sm font-medium text-foreground">Subscription ID</label>
                       <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="mt-1" />
                     </div>
                     <Button className="w-full">Save Azure Credentials</Button>
