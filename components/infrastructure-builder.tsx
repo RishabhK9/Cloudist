@@ -1060,6 +1060,12 @@ variable "environment" {
         output={consoleOutput}
         isRunning={isConsoleRunning}
         status={consoleStatus}
+        enableStreaming={true}
+        onClear={() => {
+          setConsoleOutput('')
+          setConsoleTitle('')
+          setConsoleStatus('idle')
+        }}
       />
     </div>
   );
