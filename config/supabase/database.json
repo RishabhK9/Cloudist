@@ -1,7 +1,7 @@
 {
   "id": "database",
   "name": "Database",
-  "icon": "/supabase/supabase-logo-icon.svg",
+  "icon": "/supabase/database.svg",
   "category": "Database",
   "description": "PostgreSQL database with real-time capabilities",
   "terraformType": "",
@@ -10,7 +10,7 @@
     "region": "us-east-1",
     "plan": "free",
     "db_password": "TheCloudist$Project",
-    "postgres_version": "15"
+    "postgres_version": "Latest (Auto)"
   },
   "configSchema": {
     "project_name": {
@@ -69,4 +69,3 @@
     }
   }
 }
-
