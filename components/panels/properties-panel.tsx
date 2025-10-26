@@ -248,9 +248,6 @@ export function PropertiesPanel({
     <div className="h-full flex flex-col bg-sidebar">
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
-            <span className="text-lg">📦</span>
-          </div>
           <Input
             value={block.name}
             onChange={(e) => onUpdateBlock(block.id, { name: e.target.value })}
