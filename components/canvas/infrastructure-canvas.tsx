@@ -19,7 +19,6 @@ import {
   BackgroundVariant,
   ConnectionLineType,
   ConnectionMode,
-  Controls,
   ReactFlow,
   ReactFlowProvider,
   useEdgesState,
@@ -1229,7 +1228,6 @@ provider "aws" {
                     color="#9ca3af"
                     style={{ backgroundColor: '#f9fafb' }}
                   />
-                  <Controls />
                 </ReactFlow>
               </ReactFlowProvider>
             </div>
@@ -1386,7 +1384,7 @@ provider "aws" {
             </div>
             
             {/* Providers Pane - Bottom Section - Takes up flex space */}
-            <div className="flex flex-col overflow-auto" style={{ flex: '2 1 0', minHeight: '200px' }}>
+            <div className="flex flex-col overflow-auto bg-sidebar" style={{ flex: '2 1 0', minHeight: '200px' }}>
               <ProvidersPane currentProvider={provider} nodes={nodes} />
             </div>
           </aside>

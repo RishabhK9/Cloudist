@@ -19,7 +19,6 @@ import type { Block, Connection, BlockTemplate } from "@/types/infrastructure"
 import {
   ReactFlow,
   Background,
-  Controls,
   BackgroundVariant,
   ConnectionMode,
   ConnectionLineType,
@@ -332,7 +331,6 @@ export function Canvas({
         nodesDraggable={true}
       >
         <Background variant={BackgroundVariant.Dots} gap={20} size={1} bgColor="#2C2C2C"/>
-        <Controls />
       </ReactFlow>
 
       {/* Custom Zoom Controls */}

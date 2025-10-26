@@ -107,7 +107,7 @@ const blockTemplates: BlockTemplate[] = [
   },
   {
     type: "kubernetes",
-    name: "Kubernetes Cluster",
+    name: "EKS Cluster",
     icon: awsIconMap.kubernetes,
     category: "compute",
     defaultConfig: { nodes: 3, version: "1.28" },
