@@ -4,6 +4,18 @@ import { ConfigLoader, ServiceConfig } from "@/lib/config-loader"
 import { CloudServiceNodeData, CloudServiceNode as CloudServiceNodeType } from "@/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import { memo, useEffect, useState } from "react"
+import { X } from "lucide-react"
+import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 
 interface CloudServiceNodeProps extends NodeProps<CloudServiceNodeType> {
   onDoubleClick?: (nodeData: CloudServiceNodeData) => void
@@ -13,6 +25,7 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
   const [config, setConfig] = useState((data as CloudServiceNodeData)?.config || {})
   const [serviceConfig, setServiceConfig] = useState<ServiceConfig | null>(null)
   const [loading, setLoading] = useState(false)
+  const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Early return if data is not properly structured
   if (!data) {
@@ -99,6 +112,20 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
 
   return (
     <div className={`relative ${selected ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}>
+      {/* Delete button - only visible when selected */}
+      {selected && nodeData.onDelete && (
+        <Button
+          size="icon"
+          variant="destructive"
+          className="absolute -top-3 -right-3 h-6 w-6 rounded-full shadow-lg z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowDeleteDialog(true);
+          }}
+        >
+          <X className="w-3 h-3" />
+        </Button>
+      )}
       {/* Handles on all four sides: top, bottom, left, right */}
       {/* Use a shared class to ensure transforms originate from center, use GPU acceleration,
           and raise z-index while hovered so the scaled circle doesn't reveal artifacts. */}
@@ -145,6 +172,30 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
         )}
 
       </div>
+
+      {/* Delete Node Confirmation Dialog */}
+      <AlertDialog open={showDeleteDialog} onOpenChange={setShowDeleteDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Node</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this node? This action cannot be undone and will also remove all connected edges.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                nodeData.onDelete?.();
+                setShowDeleteDialog(false);
+              }}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Node
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 })

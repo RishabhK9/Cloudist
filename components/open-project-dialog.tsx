@@ -29,6 +29,7 @@ export interface Project {
   id: string
   name: string
   description: string
+  provider?: "aws" | "gcp" | "azure"
   createdAt: string
   lastModified: string
   blocks: any[]
