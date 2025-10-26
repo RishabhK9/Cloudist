@@ -6,6 +6,7 @@ import { ReactFlowProvider } from "@xyflow/react";
 import { ComponentPalette } from "@/components/panels/component-palette";
 import { Canvas } from "@/components/canvas/canvas";
 import { PropertiesPanel } from "@/components/panels/properties-panel";
+import { ProvidersPane } from "@/components/panels/providers-pane";
 import { Toolbar } from "@/components/layout/toolbar";
 import { ProjectTitleBar } from "@/components/layout/project-title-bar";
 import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-dialog";
@@ -365,13 +366,20 @@ export default function InfrastructureBuilder() {
           </ReactFlowProvider>
         </div>
 
-        <PropertiesPanel
-          block={selectedBlock}
-          blocks={blocks}
-          connections={connections}
-          onUpdateBlock={handleUpdateBlock}
-          onDeleteBlock={handleDeleteBlock}
-        />
+        <div className="flex flex-col w-80 border-l border-sidebar-border bg-sidebar overflow-hidden">
+          <div className="flex-1 min-h-0 overflow-hidden">
+            <PropertiesPanel
+              block={selectedBlock}
+              blocks={blocks}
+              connections={connections}
+              onUpdateBlock={handleUpdateBlock}
+              onDeleteBlock={handleDeleteBlock}
+            />
+          </div>
+          <div className="h-[40vh] border-t border-sidebar-border overflow-hidden">
+            <ProvidersPane currentProvider={currentProject?.provider} />
+          </div>
+        </div>
       </div>
 
       {/* Deployment Error Notification */}

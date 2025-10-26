@@ -2,21 +2,13 @@
 
 import { useState } from "react"
 import { Button } from "@/components/ui/button"
-import { Card, CardContent } from "@/components/ui/card"
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu"
 import { Badge } from "@/components/ui/badge"
 import { 
   Cloud, 
-  ChevronDown, 
+  ChevronRight,
   Link2, 
   Info, 
-  ExternalLink,
-  Settings
+  ExternalLink
 } from "lucide-react"
 
 interface Provider {
@@ -68,13 +60,10 @@ interface ProvidersPaneProps {
 }
 
 export function ProvidersPane({ currentProvider }: ProvidersPaneProps) {
-  const [selectedProvider, setSelectedProvider] = useState<Provider | null>(
-    currentProvider ? PROVIDERS.find(p => p.id === currentProvider) || null : null
-  )
-  const [isExpanded, setIsExpanded] = useState(true)
+  const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
 
-  const handleProviderClick = (provider: Provider) => {
-    setSelectedProvider(provider.id === selectedProvider?.id ? null : provider)
+  const handleProviderClick = (providerId: string) => {
+    setExpandedProvider(expandedProvider === providerId ? null : providerId)
   }
 
   const handleConnectMCP = (provider: Provider) => {
@@ -94,120 +83,106 @@ export function ProvidersPane({ currentProvider }: ProvidersPaneProps) {
   }
 
   return (
-    <div className="border-t border-gray-200 bg-white">
+    <div className="bg-sidebar h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div 
-        className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-gray-50"
-        onClick={() => setIsExpanded(!isExpanded)}
-      >
+      <div className="flex items-center justify-between px-4 py-3 border-b border-sidebar-border flex-shrink-0">
         <div className="flex items-center gap-2">
-          <Cloud className="w-4 h-4 text-gray-600" />
-          <span className="text-sm font-medium text-gray-900">Providers</span>
+          <Cloud className="w-4 h-4 text-primary" />
+          <span className="text-sm font-medium">Providers</span>
           <Badge variant="secondary" className="text-xs">
             {PROVIDERS.length}
           </Badge>
         </div>
-        <ChevronDown 
-          className={`w-4 h-4 text-gray-600 transition-transform ${
-            isExpanded ? "rotate-180" : ""
-          }`}
-        />
       </div>
 
-      {/* Content */}
-      {isExpanded && (
-        <div className="px-4 pb-4 space-y-2 max-h-64 overflow-y-auto">
-          {PROVIDERS.map((provider) => (
-            <Card 
-              key={provider.id}
-              className={`cursor-pointer transition-all hover:shadow-md ${
-                selectedProvider?.id === provider.id 
-                  ? "border-blue-500 bg-blue-50" 
-                  : "border-gray-200 hover:border-gray-300"
-              }`}
-            >
-              <CardContent className="p-3">
-                <div className="flex items-center justify-between">
-                  <div 
-                    className="flex items-center gap-3 flex-1"
-                    onClick={() => handleProviderClick(provider)}
-                  >
-                    <div className="text-2xl">{provider.icon}</div>
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2">
-                        <span className="text-sm font-medium text-gray-900">
-                          {provider.displayName}
-                        </span>
-                        {currentProvider === provider.id && (
-                          <Badge variant="outline" className="text-xs bg-green-50 border-green-200 text-green-700">
-                            Active
-                          </Badge>
-                        )}
-                      </div>
-                      <div className="flex items-center gap-2 mt-1">
-                        <Badge 
-                          variant={provider.status === "connected" ? "default" : "secondary"}
-                          className={`text-xs ${
-                            provider.status === "connected" 
-                              ? "bg-green-100 text-green-700 border-green-200" 
-                              : "bg-gray-100 text-gray-600 border-gray-200"
-                          }`}
-                        >
-                          {provider.status === "connected" ? "Connected" : "Disconnected"}
+      {/* Content - Expandable List */}
+      <div className="flex-1 overflow-y-auto min-h-0">
+        {PROVIDERS.map((provider) => {
+          const isExpanded = expandedProvider === provider.id
+          const isActive = currentProvider === provider.id
+          
+          return (
+            <div key={provider.id} className="border-b border-sidebar-border">
+              {/* Provider Item Header */}
+              <div
+                className="flex items-center justify-between px-4 py-3 cursor-pointer hover:bg-accent/50 transition-colors"
+                onClick={() => handleProviderClick(provider.id)}
+              >
+                <div className="flex items-center gap-3 flex-1">
+                  <ChevronRight
+                    className={`w-4 h-4 text-muted-foreground transition-transform ${
+                      isExpanded ? "rotate-90" : ""
+                    }`}
+                  />
+                  <div className="text-xl">{provider.icon}</div>
+                  <div className="flex-1">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-medium">
+                        {provider.displayName}
+                      </span>
+                      {isActive && (
+                        <Badge variant="outline" className="text-xs">
+                          Active
                         </Badge>
-                      </div>
+                      )}
+                    </div>
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <Badge 
+                        variant={provider.status === "connected" ? "default" : "secondary"}
+                        className="text-xs"
+                      >
+                        {provider.status === "connected" ? "Connected" : "Disconnected"}
+                      </Badge>
                     </div>
                   </div>
-                  
-                  {selectedProvider?.id === provider.id && (
-                    <div className="flex items-center gap-1 ml-2">
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleConnectMCP(provider)
-                        }}
-                        className="h-8 px-2 text-xs"
-                        title="Connect MCP"
-                      >
-                        <Link2 className="w-3 h-3 mr-1" />
-                        MCP
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleFetchDetails(provider)
-                        }}
-                        className="h-8 px-2 text-xs"
-                        title="Fetch Details"
-                      >
-                        <Info className="w-3 h-3 mr-1" />
-                        Details
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleVisitConsole(provider)
-                        }}
-                        className="h-8 px-2 text-xs"
-                        title="Visit Console"
-                      >
-                        <ExternalLink className="w-3 h-3 mr-1" />
-                        Console
-                      </Button>
-                    </div>
-                  )}
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
-      )}
+              </div>
+
+              {/* Expanded Content */}
+              {isExpanded && (
+                <div className="px-4 py-3 bg-muted/30 space-y-2">
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleConnectMCP(provider)
+                    }}
+                    className="w-full justify-start text-xs h-8"
+                  >
+                    <Link2 className="w-3 h-3 mr-2" />
+                    Connect MCP
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleFetchDetails(provider)
+                    }}
+                    className="w-full justify-start text-xs h-8"
+                  >
+                    <Info className="w-3 h-3 mr-2" />
+                    Fetch Details
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      handleVisitConsole(provider)
+                    }}
+                    className="w-full justify-start text-xs h-8"
+                  >
+                    <ExternalLink className="w-3 h-3 mr-2" />
+                    Visit Console
+                  </Button>
+                </div>
+              )}
+            </div>
+          )
+        })}
+      </div>
     </div>
   )
 }

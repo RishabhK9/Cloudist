@@ -1142,8 +1142,8 @@ provider "aws" {
                 backgroundColor: isResizing ? '#3b82f6' : 'transparent'
               }}
             />
-            {/* Terraform Code Section - Takes 60% of height */}
-            <div className="flex flex-col overflow-hidden" style={{ height: '60%', minHeight: '300px' }}>
+            {/* Terraform Code Section - Takes up flex space */}
+            <div className="flex flex-col overflow-hidden" style={{ flex: '3 1 0', minHeight: '300px' }}>
               {/* Code Editor Header */}
               <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50 shrink-0">
                 <div className="flex items-center gap-2">
@@ -1265,8 +1265,8 @@ provider "aws" {
               </div>
             </div>
             
-            {/* Providers Pane - Bottom Section - Takes 40% of height */}
-            <div className="flex flex-col overflow-auto border-t border-gray-200" style={{ height: '40%', minHeight: '200px' }}>
+            {/* Providers Pane - Bottom Section - Takes up flex space */}
+            <div className="flex flex-col overflow-auto" style={{ flex: '2 1 0', minHeight: '200px' }}>
               <ProvidersPane currentProvider={provider} />
             </div>
           </aside>

@@ -13,11 +13,18 @@ import {
 import { Input } from "@/components/ui/input"
 import { Textarea } from "@/components/ui/textarea"
 import { Label } from "@/components/ui/label"
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select"
 
 interface CreateNewProjectDialogProps {
   open: boolean
   onOpenChange: (open: boolean) => void
-  onCreateProject: (name: string, description: string) => void
+  onCreateProject: (name: string, description: string, provider: "aws" | "gcp" | "azure") => void
 }
 
 export function CreateNewProjectDialog({
@@ -27,6 +34,7 @@ export function CreateNewProjectDialog({
 }: CreateNewProjectDialogProps) {
   const [name, setName] = useState("")
   const [description, setDescription] = useState("")
+  const [provider, setProvider] = useState<"aws" | "gcp" | "azure">("aws")
   const [error, setError] = useState("")
 
   const handleCreate = () => {
@@ -35,9 +43,10 @@ export function CreateNewProjectDialog({
       return
     }
 
-    onCreateProject(name.trim(), description.trim())
+    onCreateProject(name.trim(), description.trim(), provider)
     setName("")
     setDescription("")
+    setProvider("aws")
     setError("")
     onOpenChange(false)
   }
@@ -45,6 +54,7 @@ export function CreateNewProjectDialog({
   const handleCancel = () => {
     setName("")
     setDescription("")
+    setProvider("aws")
     setError("")
     onOpenChange(false)
   }
@@ -88,6 +98,20 @@ export function CreateNewProjectDialog({
               onChange={(e) => setDescription(e.target.value)}
               rows={3}
             />
+          </div>
+
+          <div className="space-y-2">
+            <Label htmlFor="provider">Cloud Provider</Label>
+            <Select value={provider} onValueChange={(value) => setProvider(value as "aws" | "gcp" | "azure")}>
+              <SelectTrigger id="provider">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="aws">☁️ Amazon Web Services (AWS)</SelectItem>
+                <SelectItem value="gcp">🌩️ Google Cloud Platform (GCP)</SelectItem>
+                <SelectItem value="azure">☁️ Microsoft Azure</SelectItem>
+              </SelectContent>
+            </Select>
           </div>
         </div>
 

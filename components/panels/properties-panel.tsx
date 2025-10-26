@@ -197,21 +197,7 @@ export function PropertiesPanel({
     const terraformFiles = generateTerraformProject(blocks, connections);
 
     return (
-      <div className={`relative bg-sidebar border-l border-sidebar-border flex flex-col transition-all duration-300 ease-in-out ${
-        isCollapsed ? "w-0 border-l-0" : "w-80"
-      }`}>
-        <Button
-          size="icon"
-          variant="ghost"
-          className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 -left-6`}
-          onClick={() => setIsCollapsed(!isCollapsed)}
-        >
-          <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
-            isCollapsed ? "rotate-180" : ""
-          }`} />
-        </Button>
-        {!isCollapsed && (
-        <>
+      <div className="h-full flex flex-col bg-sidebar">
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <FileCode className="w-5 h-5 text-primary" />
@@ -222,7 +208,7 @@ export function PropertiesPanel({
           </p>
         </div>
 
-        <div className="flex-1 flex flex-col overflow-hidden">
+        <div className="flex-1 flex flex-col overflow-hidden min-h-0">
           <div className="px-4 py-3 border-b border-sidebar-border">
             <Select value={selectedFile} onValueChange={setSelectedFile}>
               <SelectTrigger className="w-full">
@@ -238,7 +224,7 @@ export function PropertiesPanel({
             </Select>
           </div>
 
-          <ScrollArea className="flex-1 h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
+          <ScrollArea className="flex-1 min-h-0">
             <div className="p-4">
               <pre className="text-xs bg-muted/50 border border-border rounded-md p-3 overflow-x-auto font-mono">
                 <code>
@@ -248,8 +234,6 @@ export function PropertiesPanel({
             </div>
           </ScrollArea>
         </div>
-        </>
-        )}
       </div>
     );
   }
@@ -261,21 +245,7 @@ export function PropertiesPanel({
   };
 
   return (
-    <div className={`relative bg-sidebar border-l border-sidebar-border flex flex-col transition-all duration-300 ease-in-out ${
-      isCollapsed ? "w-0 border-l-0" : "w-80"
-    }`}>
-      <Button
-        size="icon"
-        variant="ghost"
-        className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 -left-6`}
-        onClick={() => setIsCollapsed(!isCollapsed)}
-      >
-        <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
-          isCollapsed ? "rotate-180" : ""
-        }`} />
-      </Button>
-      {!isCollapsed && (
-      <>
+    <div className="h-full flex flex-col bg-sidebar">
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
@@ -297,7 +267,7 @@ export function PropertiesPanel({
         </Button>
       </div>
 
-      <Tabs defaultValue="basic" className="flex-1 flex flex-col">
+      <Tabs defaultValue="basic" className="flex-1 flex flex-col min-h-0">
         <TabsList className="mx-4 mt-4">
           <TabsTrigger value="basic" className="flex-1">
             Basic
@@ -307,7 +277,7 @@ export function PropertiesPanel({
           </TabsTrigger>
         </TabsList>
 
-        <ScrollArea className="flex-1 h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
+        <ScrollArea className="flex-1 min-h-0">
           <TabsContent value="basic" className="p-4 space-y-4">
             {block.type === "ec2" && (
               <>
@@ -465,8 +435,6 @@ export function PropertiesPanel({
           </TabsContent>
         </ScrollArea>
       </Tabs>
-      </>
-      )}
     </div>
   );
 }
