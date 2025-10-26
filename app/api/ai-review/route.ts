@@ -141,7 +141,9 @@ export async function POST(request: NextRequest) {
         // Cleanup temp directory if it was created
         try {
           await fs.rm(tempDir, { recursive: true, force: true });
-        } catch {}
+        } catch (cleanupError) {
+          console.warn('⚠️ Failed to clean up temp directory:', cleanupError instanceof Error ? cleanupError.message : cleanupError);
+        }
       }
     }
 
