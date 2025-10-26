@@ -38,7 +38,7 @@ const awsIconMap: Record<string, string> = {
   ec2: "/aws/Arch_Amazon-EC2_64.svg",
   lambda: "/aws/Arch_AWS-Lambda_64.svg",
   fargate: "/aws/Arch_AWS-Fargate_64.svg",
-  kubernetes: "/aws/Arcg_AWS_Elastic_Kubernetes_Service.svg",
+  kubernetes: "/aws/Arch_AWS_Elastic_Kubernetes_Service.svg",
   container: "/aws/Arch_Amazon-ECS-Anywhere_64.svg",
   
   // Storage
@@ -66,7 +66,13 @@ const awsIconMap: Record<string, string> = {
   secrets_manager: "/aws/Arch_AWS-Secrets-Manager_64.svg",
   secrets: "/aws/Arch_AWS-Secrets-Manager_64.svg",
   iam: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
-  waf: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
+  waf: "/aws/Arch_AWS_WAF.svg",
+  
+  // Frontend & Mobile
+  amplify: "/aws/Arch_AWS_Amplify.svg",
+  
+  // Networking (DNS)
+  route53: "/aws/Arch_AWS_Route 53.svg",
   
   // Integration & Orchestration
   sqs: "/aws/Arch_Amazon-Simple-Queue-Service_64.svg",
@@ -173,6 +179,20 @@ const blockTemplates: BlockTemplate[] = [
     icon: awsIconMap.cloudfront,
     category: "networking",
     defaultConfig: { priceClass: "PriceClass_100" },
+  },
+  {
+    type: "route53",
+    name: "Route 53",
+    icon: awsIconMap.route53,
+    category: "networking",
+    defaultConfig: { name: "", private_zone: false },
+  },
+  {
+    type: "amplify",
+    name: "Amplify",
+    icon: awsIconMap.amplify,
+    category: "networking",
+    defaultConfig: { name: "", repository: "", platform: "WEB" },
   },
 
   // Security

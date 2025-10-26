@@ -1,7 +1,7 @@
 {
   "id": "kubernetes",
   "name": "EKS (Kubernetes)",
-  "icon": "/aws/Arch_Amazon-Elastic-Kubernetes-Service_64.svg",
+  "icon": "/aws/Arch_AWS_Elastic_Kubernetes_Service.svg",
   "category": "Containers",
   "description": "Managed Kubernetes service",
   "terraformType": "aws_eks_cluster",

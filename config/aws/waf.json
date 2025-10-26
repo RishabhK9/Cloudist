@@ -1,0 +1,62 @@
+{
+  "id": "waf",
+  "name": "WAF",
+  "icon": "/aws/Arch_AWS_WAF.svg",
+  "category": "Security",
+  "description": "Web Application Firewall for protecting web applications",
+  "terraformType": "aws_wafv2_web_acl",
+  "defaultConfig": {
+    "name": "",
+    "scope": "REGIONAL",
+    "default_action": "ALLOW",
+    "cloudwatch_metrics_enabled": true
+  },
+  "configSchema": {
+    "name": {
+      "type": "string",
+      "label": "Web ACL Name",
+      "description": "The name of the WAF Web ACL",
+      "required": true
+    },
+    "scope": {
+      "type": "select",
+      "label": "Scope",
+      "description": "Specifies whether this is for CloudFront or regional application",
+      "options": ["REGIONAL", "CLOUDFRONT"],
+      "default": "REGIONAL",
+      "required": true
+    },
+    "default_action": {
+      "type": "select",
+      "label": "Default Action",
+      "description": "The action to perform if none of the rules match",
+      "options": ["ALLOW", "BLOCK"],
+      "default": "ALLOW",
+      "required": true
+    },
+    "cloudwatch_metrics_enabled": {
+      "type": "boolean",
+      "label": "Enable CloudWatch Metrics",
+      "description": "Enable CloudWatch metrics for monitoring",
+      "default": true
+    },
+    "sampled_requests_enabled": {
+      "type": "boolean",
+      "label": "Enable Sampled Requests",
+      "description": "Enable sampling of requests for analysis",
+      "default": true
+    },
+    "rule_group_arns": {
+      "type": "string",
+      "label": "Rule Group ARNs",
+      "description": "JSON array of rule group ARNs to associate",
+      "required": false
+    },
+    "tags": {
+      "type": "string",
+      "label": "Tags",
+      "description": "JSON string of tags to apply",
+      "required": false
+    }
+  }
+}
