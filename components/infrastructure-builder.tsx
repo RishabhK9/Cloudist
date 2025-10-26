@@ -716,7 +716,13 @@ variable "environment" {
                 placeholder="Ask about your infrastructure..."
                 className="flex-1 px-3 py-2 text-sm rounded-md border border-input bg-background"
                 disabled={isChatLoading}
+                aria-describedby={isChatLoading ? "ai-chat-input-loading-desc" : undefined}
               />
+              {isChatLoading && (
+                <span id="ai-chat-input-loading-desc" className="sr-only">
+                  Input disabled while AI is responding.
+                </span>
+              )}
               <Button
                 size="sm"
                 onClick={handleSendChatMessage}
