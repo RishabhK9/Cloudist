@@ -60,7 +60,8 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
   // Load projects on mount
   useEffect(() => {
     try {
-      const savedProjects = localStorage.getItem("infrastructure-projects");
+      // Use the same storage key as Dashboard for consistency
+      const savedProjects = localStorage.getItem("infrastructure-designer-projects");
       const savedCurrentProjectId = localStorage.getItem("current-project-id");
 
       if (savedProjects) {
@@ -74,15 +75,20 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
           );
           if (project) {
             setCurrentProject(project);
-            setBlocks(project.blocks || []);
-            setConnections(project.connections || []);
+            // Load blocks from canvasState if available
+            const projectBlocks = project.canvasState?.nodes || project.blocks || [];
+            const projectConnections = project.canvasState?.edges || project.connections || [];
+            setBlocks(projectBlocks);
+            setConnections(projectConnections);
             setHistory([
               {
-                blocks: project.blocks || [],
-                connections: project.connections || [],
+                blocks: projectBlocks,
+                connections: projectConnections,
               },
             ]);
             console.log("✅ Project loaded:", project.name);
+          } else {
+            console.warn("⚠️ Project not found with ID:", savedCurrentProjectId);
           }
         }
       }
@@ -102,7 +108,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
         setProjects([defaultProject]);
         setCurrentProject(defaultProject);
         localStorage.setItem(
-          "infrastructure-projects",
+          "infrastructure-designer-projects",
           JSON.stringify([defaultProject])
         );
         localStorage.setItem("current-project-id", defaultProject.id);
@@ -199,7 +205,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
     setProjects(updatedProjects);
     setCurrentProject(updatedProject);
     localStorage.setItem(
-      "infrastructure-projects",
+      "infrastructure-designer-projects",
       JSON.stringify(updatedProjects)
     );
     console.log("✅ Project saved:", updatedProject.name);
@@ -233,7 +239,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
     setHistoryIndex(0);
 
     localStorage.setItem(
-      "infrastructure-projects",
+      "infrastructure-designer-projects",
       JSON.stringify(updatedProjects)
     );
     localStorage.setItem("current-project-id", newProject.id);
@@ -266,7 +272,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
     const updatedProjects = projects.filter((p) => p.id !== projectId);
     setProjects(updatedProjects);
     localStorage.setItem(
-      "infrastructure-projects",
+      "infrastructure-designer-projects",
       JSON.stringify(updatedProjects)
     );
 

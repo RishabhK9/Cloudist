@@ -1,7 +1,6 @@
 "use client"
 
 import { CreateProjectDialog } from "@/components/create-project-dialog"
-import { ProjectView } from "@/components/project-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -25,6 +24,7 @@ import { testCredentials } from "@/lib/api-service"
 // Remove the separate persistence import - we'll use localStorage directly
 import { cn } from "@/lib/utils"
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import {
   Brain,
   Copy,
@@ -57,13 +57,9 @@ interface Project {
   }
 }
 
-interface DashboardProps {
-  onProjectSelect?: (projectId: string) => void
-}
-
-export function Dashboard({ onProjectSelect }: DashboardProps) {
+export function Dashboard() {
+  const router = useRouter()
   const [projects, setProjects] = useState<Project[]>([])
-  const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [activeTab, setActiveTab] = useState<string>("home")
   const [searchQuery, setSearchQuery] = useState("")
   const [showCreateDialog, setShowCreateDialog] = useState(false)
@@ -90,15 +86,10 @@ export function Dashboard({ onProjectSelect }: DashboardProps) {
   )
 
   const handleProjectSelect = (project: Project) => {
-    if (onProjectSelect) {
-      onProjectSelect(project.id)
-    } else {
-      setSelectedProject(project)
-    }
-  }
-
-  const handleBackToDashboard = () => {
-    setSelectedProject(null)
+    // Save the selected project to localStorage
+    localStorage.setItem('current-project-id', project.id)
+    // Navigate to editor
+    router.push('/editor')
   }
 
   const handleDeleteProject = (projectId: string) => {
@@ -132,7 +123,10 @@ export function Dashboard({ onProjectSelect }: DashboardProps) {
     const updatedProjects = [newProject, ...projects]
     setProjects(updatedProjects)
     localStorage.setItem('infrastructure-designer-projects', JSON.stringify(updatedProjects))
-    setSelectedProject(newProject)
+    
+    // Save as current project and navigate to editor
+    localStorage.setItem('current-project-id', newProject.id)
+    router.push('/editor')
   }
 
   const handleTabChange = (tabId: string) => {
@@ -265,20 +259,6 @@ export function Dashboard({ onProjectSelect }: DashboardProps) {
         azure: [error instanceof Error ? error.message : 'Failed to save credentials'] 
       }))
     }
-  }
-
-  if (selectedProject) {
-    return (
-      <ProjectView
-        project={selectedProject}
-        onBack={handleBackToDashboard}
-        onUpdateProject={(updatedProject) => {
-          setProjects(projects.map((p) => (p.id === updatedProject.id ? updatedProject : p)))
-          setSelectedProject(updatedProject)
-        }}
-        onDeleteProject={(projectId) => setProjects(projects.filter((p) => p.id !== projectId))}
-      />
-    )
   }
 
   return (
