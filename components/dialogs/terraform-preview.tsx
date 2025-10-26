@@ -42,7 +42,12 @@ export function TerraformPreviewDialog({
         hasFileMarkers = true
         // Save previous buffer
         if (buffer.length > 0) {
-          const content = buffer.join('\n').trim()
+          // Join lines preserving indentation, only trim empty lines at start/end
+          let content = buffer.join('\n')
+          // Remove leading empty lines
+          content = content.replace(/^\n+/, '')
+          // Remove trailing empty lines
+          content = content.replace(/\n+$/, '')
           if (content) {
             files[currentFile] = (files[currentFile] || '') + content + '\n\n'
           }
@@ -58,7 +63,10 @@ export function TerraformPreviewDialog({
     
     // Add remaining buffer
     if (buffer.length > 0) {
-      const content = buffer.join('\n').trim()
+      // Join lines preserving indentation, only trim empty lines at start/end
+      let content = buffer.join('\n')
+      content = content.replace(/^\n+/, '')
+      content = content.replace(/\n+$/, '')
       if (content) {
         files[currentFile] = (files[currentFile] || '') + content
       }
@@ -69,10 +77,13 @@ export function TerraformPreviewDialog({
       return splitIntoFilesByBlockType()
     }
     
-    // Clean up empty files and trim whitespace
+    // Clean up empty files (preserve indentation, only remove leading/trailing newlines)
     Object.keys(files).forEach(key => {
-      files[key] = files[key].trim()
-      if (!files[key] || files[key].length === 0) {
+      let content = files[key]
+      // Remove only leading and trailing newlines, preserve indentation
+      content = content.replace(/^\n+/, '').replace(/\n+$/, '')
+      files[key] = content
+      if (!content || content.length === 0) {
         delete files[key]
       }
     })
@@ -144,7 +155,9 @@ export function TerraformPreviewDialog({
         // If we're switching files, save the buffer
         if (newFile && newFile !== currentFile) {
           if (buffer.length > 0 && currentFile) {
-            const content = buffer.join('\n').trim()
+            let content = buffer.join('\n')
+            // Remove only leading and trailing newlines, preserve indentation
+            content = content.replace(/^\n+/, '').replace(/\n+$/, '')
             if (content) {
               files[currentFile] = (files[currentFile] || '') + content + '\n\n'
             }
@@ -167,16 +180,21 @@ export function TerraformPreviewDialog({
     
     // Add remaining buffer
     if (buffer.length > 0 && currentFile) {
-      const content = buffer.join('\n').trim()
+      let content = buffer.join('\n')
+      // Remove only leading and trailing newlines, preserve indentation
+      content = content.replace(/^\n+/, '').replace(/\n+$/, '')
       if (content) {
         files[currentFile] = (files[currentFile] || '') + content
       }
     }
     
-    // Clean up empty files and trim whitespace
+    // Clean up empty files (preserve indentation, only remove leading/trailing newlines)
     Object.keys(files).forEach(key => {
-      files[key] = files[key].trim()
-      if (!files[key] || files[key].length === 0) {
+      let content = files[key]
+      // Remove only leading and trailing newlines, preserve indentation
+      content = content.replace(/^\n+/, '').replace(/\n+$/, '')
+      files[key] = content
+      if (!content || content.length === 0) {
         delete files[key]
       }
     })
@@ -339,11 +357,11 @@ export function TerraformPreviewDialog({
       }
 
       return (
-        <div key={index} className={className}>
+        <div key={index} className={className + " whitespace-pre"}>
           <span className="text-gray-400 select-none mr-4 inline-block w-8 text-right">
             {index + 1}
           </span>
-          {line || '\u00A0'}
+          <span>{line || '\u00A0'}</span>
         </div>
       )
     })
