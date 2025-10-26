@@ -5,6 +5,7 @@
 /.pnp
 .pnp.js
 /terraform-workspaces
+/.idea
 
 # testing
 /coverage
