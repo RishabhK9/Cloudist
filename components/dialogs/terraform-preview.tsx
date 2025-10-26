@@ -25,7 +25,7 @@ export function TerraformPreviewDialog({
     const files: Record<string, string> = {}
     
     // Check if code uses file markers (# === filename.tf ===)
-    const fileMarkerRegex = /^#\s*===\s*([a-z]+\.tf)\s*===\s*$/i
+    const fileMarkerRegex = /^#\s*===\s*([a-z0-9-]+\.tf)\s*===\s*$/i
     const lines = terraformCode.split('\n')
     
     let currentFile = 'main.tf'
