@@ -12,12 +12,12 @@ import { ProjectTitleBar } from "@/components/layout/project-title-bar";
 import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-dialog";
 import { OpenProjectDialog, type Project } from "@/components/dialogs/open-project-dialog";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
-import { PlanPreviewDialog } from "@/components/dialogs/plan-preview-dialog";
-import { TerraformPreviewDialog } from "@/components/dialogs/terraform-preview";
+import { AIReviewDialog } from "@/components/dialogs/ai-review-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";
 import type { Block, Connection } from "@/types/infrastructure";
+import { TerraformGenerator } from "@/components/utils/terraform-generator";
 
 interface HistoryState {
   blocks: Block[];
@@ -41,25 +41,11 @@ export default function InfrastructureBuilder() {
   const [zoom, setZoom] = useState(1);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [showPlanPreview, setShowPlanPreview] = useState(false);
-  const [showTerraformCode, setShowTerraformCode] = useState(false);
+  const [showAIReview, setShowAIReview] = useState(false);
+  const [aiReviewAnalysis, setAiReviewAnalysis] = useState<any>(null);
+  const [isAIReviewLoading, setIsAIReviewLoading] = useState(false);
+  const [aiReviewError, setAiReviewError] = useState<string | null>(null);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
-  
-  // AI Chat state (Fetch.ai ASI:One)
-  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([
-    {
-      role: 'assistant',
-      content: 'Hello! I\'m powered by Fetch.ai\'s ASI:One. I can help you design cloud infrastructure, review your architecture, and answer questions about best practices. What would you like to build?'
-    }
-  ]);
-  const [chatInput, setChatInput] = useState('');
-  const [isChatLoading, setIsChatLoading] = useState(false);
-
-  // Deployment State (Claude Terraform Generation)
-  const [terraformCode, setTerraformCode] = useState<string | null>(null);
-  const [deploymentStage, setDeploymentStage] = useState<'none' | 'generated' | 'planned' | 'applying' | 'applied'>('none');
-  const [planOutput, setPlanOutput] = useState<string | null>(null);
-  const [isGeneratingTerraform, setIsGeneratingTerraform] = useState(false);
 
   const [history, setHistory] = useState<HistoryState[]>([
     { blocks: [], connections: [] },
@@ -313,124 +299,17 @@ export default function InfrastructureBuilder() {
     }
   };
 
-  // Handle AI Chat Messages (Fetch.ai ASI:One)
-  const handleSendChatMessage = async () => {
-    if (!chatInput.trim() || isChatLoading) return;
-
-    const userMessage = chatInput.trim();
-    setChatInput('');
-    
-    // Add user message to chat
-    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
-    setIsChatLoading(true);
-
-    try {
-      console.log('💬 Sending message to ASI:One...');
-      const response = await fetch('/api/agent', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
-      });
-
-      if (!response.ok) {
-        throw new Error('Failed to get response from AI');
-      }
-
-      const data = await response.json();
-      console.log('✅ ASI:One response:', data);
-
-      // Add assistant response to chat
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: data.response || data.content || 'I apologize, I had trouble processing that request.'
-      }]);
-    } catch (error) {
-      console.error('❌ Chat error:', error);
-      setChatMessages(prev => [...prev, {
-        role: 'assistant',
-        content: 'Sorry, I encountered an error. Please try again.'
-      }]);
-    } finally {
-      setIsChatLoading(false);
-    }
-  };
-
-  const handleGenerateTerraform = async () => {
-    // Clear previous error and plan output
+  const handleDeploy = () => {
+    // Clear previous error
     setDeploymentError(null);
-    setPlanOutput(null);
 
     // Check if there are any blocks to deploy
     if (blocks.length === 0) {
       setDeploymentError(
-        "No infrastructure defined. Please add some services to generate Terraform code."
+        "No infrastructure defined. Please add some services to deploy."
       );
       return;
     }
-
-    const isRegeneration = terraformCode !== null;
-
-    try {
-      setIsGeneratingTerraform(true);
-      
-      toast({
-        title: isRegeneration ? "🔄 Regenerating Terraform" : "⚙️ Generating Terraform",
-        description: "Claude is generating your infrastructure code...",
-        duration: 2000,
-      });
-
-      // Call the API to generate Terraform code using Claude
-      const response = await fetch('/api/terraform/generate', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          blocks,
-          connections,
-          provider: currentProject?.provider || 'aws'
-        }),
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to generate Terraform code');
-      }
-
-      const data = await response.json();
-      
-      if (!data.success || !data.terraformCode) {
-        throw new Error('Invalid response from Terraform generation API');
-      }
-
-      setTerraformCode(data.terraformCode);
-      setDeploymentStage('generated');
-      
-      toast({
-        title: isRegeneration ? "✅ Terraform Regenerated" : "✅ Terraform Generated",
-        description: `${isRegeneration ? 'Regenerated' : 'Generated'} code for ${data.metadata.blocksCount} services. Ready to plan.`,
-        duration: 3000,
-      });
-      
-      console.log(isRegeneration ? '✅ Terraform code regenerated successfully' : '✅ Terraform code generated successfully');
-    } catch (error) {
-      console.error("Failed to generate Terraform:", error);
-      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
-      setDeploymentError(`Failed to generate Terraform code: ${errorMessage}`);
-      
-      toast({
-        title: "❌ Generation Failed",
-        description: errorMessage,
-        variant: "destructive",
-        duration: 5000,
-      });
-    } finally {
-      setIsGeneratingTerraform(false);
-    }
-  };
-
-  const handlePlan = async () => {
-    if (deploymentStage !== 'generated') return;
 
     // Check if AWS credentials are configured
     if (!CredentialManager.hasCredentials("aws")) {
@@ -440,70 +319,194 @@ export default function InfrastructureBuilder() {
       return;
     }
 
-    try {
-      toast({
-        title: "📋 Running terraform plan",
-        description: "Analyzing infrastructure changes...",
-        duration: 2000,
-      });
-
-      // TODO: Call API to run terraform plan
-      await new Promise(resolve => setTimeout(resolve, 2000));
-      
-      // Mock plan output
-      const mockPlan = `Terraform will perform the following actions:
-
-  # aws_dynamodb_table.example will be created
-  + resource "aws_dynamodb_table" "example" {
-      + arn              = (known after apply)
-      + billing_mode     = "PAY_PER_REQUEST"
-      + hash_key         = "id"
-      + id               = (known after apply)
-      + name             = "my-table"
-    }
-
-Plan: 1 to add, 0 to change, 0 to destroy.`;
-
-      setPlanOutput(mockPlan);
-      setDeploymentStage('planned');
-      
-      toast({
-        title: "✅ Plan Complete",
-        description: "Review the changes and click Apply to deploy.",
-        duration: 3000,
-      });
-    } catch (error) {
-      console.error("Failed to plan:", error);
-      setDeploymentError("Failed to run terraform plan. Please check your configuration.");
-    }
+    // If credentials are configured, proceed with deployment
+    toast({
+      title: "🚀 Deployment started",
+      description: "Your infrastructure deployment has been initiated.",
+      duration: 3000,
+    });
   };
 
-  const handleApply = async () => {
-    if (deploymentStage !== 'planned') return;
+  const handleCodeReview = async () => {
+    console.log('🎯 [handleCodeReview] Starting code review...');
+    setShowAIReview(true);
+    setIsAIReviewLoading(true);
+    setAiReviewError(null);
+    setAiReviewAnalysis(null);
 
     try {
-      setDeploymentStage('applying');
+      console.log('📦 [handleCodeReview] Generating Terraform from blocks:', blocks.length);
       
-      toast({
-        title: "🚀 Applying changes",
-        description: "Deploying infrastructure to AWS...",
-        duration: 2000,
+      // Check if there are any blocks to review
+      if (blocks.length === 0) {
+        console.warn('⚠️ [handleCodeReview] No infrastructure blocks to review');
+        setAiReviewError('No infrastructure defined. Please add some services to your canvas first.');
+        setIsAIReviewLoading(false);
+        return;
+      }
+      
+      // Helper function to get category from block type
+      const getCategoryFromType = (blockType: string): string => {
+        const typeToCategory: Record<string, string> = {
+          'ec2': 'compute',
+          'compute': 'compute',
+          'vm': 'compute',
+          'lambda': 'serverless',
+          's3': 'storage',
+          'storage': 'storage',
+          'blob': 'storage',
+          'rds': 'database',
+          'sql': 'database',
+          'dynamodb': 'database',
+          'api_gateway': 'networking',
+          'alb': 'networking',
+          'vpc': 'networking',
+          'sqs': 'messaging',
+          'sns': 'messaging',
+        };
+        return typeToCategory[blockType] || 'other';
+      };
+      
+      // Generate Terraform code from blocks
+      const mockNodes = blocks.map(block => ({
+        id: block.id,
+        type: block.type,
+        data: {
+          label: block.name,
+          // Use category from config if available, otherwise derive from type
+          category: block.config?.category || getCategoryFromType(block.type),
+          ...block.config
+        },
+        position: { x: block.x, y: block.y }
+      }));
+      console.log('✅ [handleCodeReview] Created mock nodes:', mockNodes.length);
+
+      const mockEdges = connections.map(conn => ({
+        id: conn.id,
+        source: conn.from,
+        target: conn.to
+      }));
+      console.log('✅ [handleCodeReview] Created mock edges:', mockEdges.length);
+
+      console.log('🔧 [handleCodeReview] Creating Terraform generator...');
+      const generator = new TerraformGenerator(
+        currentProject?.provider || "aws",
+        mockNodes,
+        mockEdges
+      );
+
+      console.log('📝 [handleCodeReview] Generating Terraform code...');
+      const terraformCode = generator.generateTerraformCode();
+      console.log('✅ [handleCodeReview] Generated main.tf:', terraformCode?.length || 0, 'characters');
+      
+      // Generate all Terraform files (matching infrastructure-canvas.tsx)
+      const output = generator.generate();
+      
+      // Generate variables.tf
+      let variablesTf = "# Variables for your infrastructure\n";
+      if (Object.keys(output.variables).length > 0) {
+        Object.entries(output.variables).forEach(([name, config]) => {
+          variablesTf += `variable "${name}" {\n`;
+          Object.entries(config as Record<string, any>).forEach(([key, value]) => {
+            if (typeof value === "string") {
+              variablesTf += `  ${key} = "${value}"\n`;
+            } else {
+              variablesTf += `  ${key} = ${JSON.stringify(value)}\n`;
+            }
+          });
+          variablesTf += "}\n\n";
+        });
+      } else {
+        variablesTf += `variable "region" {
+  description = "Cloud region"
+  type        = string
+  default     = "us-east-1"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+`;
+      }
+      
+      // Generate outputs.tf
+      let outputsTf = "# Outputs for your infrastructure\n";
+      if (Object.keys(output.outputs).length > 0) {
+        Object.entries(output.outputs).forEach(([name, config]) => {
+          outputsTf += `output "${name}" {\n`;
+          Object.entries(config as Record<string, any>).forEach(([key, value]) => {
+            if (typeof value === "string") {
+              outputsTf += `  ${key} = "${value}"\n`;
+            } else {
+              outputsTf += `  ${key} = ${JSON.stringify(value)}\n`;
+            }
+          });
+          outputsTf += "}\n\n";
+        });
+      } else {
+        outputsTf += `output "resources_created" {
+  description = "Number of resources created"
+  value       = ${mockNodes.length}
+}
+`;
+      }
+      
+      // Generate providers.tf
+      const providersTf = generator.generateProviderBlock();
+      
+      // Create files object for API (all 4 files)
+      const terraformFiles = {
+        "main.tf": terraformCode,
+        "variables.tf": variablesTf,
+        "outputs.tf": outputsTf,
+        "providers.tf": providersTf
+      };
+      console.log('📦 [handleCodeReview] Prepared files:', Object.keys(terraformFiles));
+      
+      // Call the AI review API
+      console.log('🌐 [handleCodeReview] Calling /api/ai-review...');
+      const response = await fetch('/api/ai-review', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          terraformFiles,
+          provider: currentProject?.provider || "aws"
+        }),
       });
 
-      // TODO: Call API to run terraform apply
-      await new Promise(resolve => setTimeout(resolve, 3000));
+      console.log('📥 [handleCodeReview] Response status:', response.status);
       
-      setDeploymentStage('applied');
-      
-      toast({
-        title: "✅ Deployment Complete",
-        description: "Your infrastructure has been successfully deployed!",
-        duration: 4000,
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('❌ [handleCodeReview] API error response:', errorText);
+        throw new Error(`AI review request failed: ${response.status} - ${errorText}`);
+      }
+
+      console.log('🔍 [handleCodeReview] Parsing response...');
+      const analysis = await response.json();
+      console.log('✅ [handleCodeReview] Analysis received:', {
+        hasAnalysis: !!analysis,
+        score: analysis?.overallScore,
+        issueCount: analysis?.issues?.length,
+        type: typeof analysis
       });
+      
+      setAiReviewAnalysis(analysis);
+      console.log('🎉 [handleCodeReview] Review complete!');
     } catch (error) {
-      console.error("Failed to apply:", error);
-      setDeploymentError("Failed to deploy infrastructure. Please check the logs.");
-      setDeploymentStage('planned'); // Revert to planned state
+      console.error('❌ [handleCodeReview] Code review error:', error);
+      console.error('❌ [handleCodeReview] Error details:', {
+        message: error instanceof Error ? error.message : String(error),
+        stack: error instanceof Error ? error.stack : undefined
+      });
+      setAiReviewError(error instanceof Error ? error.message : 'Failed to review code');
+    } finally {
+      setIsAIReviewLoading(false);
+      console.log('🏁 [handleCodeReview] Finished (loading=false)');
     }
   };
 
@@ -528,16 +531,12 @@ Plan: 1 to add, 0 to change, 0 to destroy.`;
         <div className="flex-1 flex flex-col">
           <Toolbar
             onSave={handleSave}
-            onGenerateTerraform={handleGenerateTerraform}
-            onPlanOrApply={deploymentStage === 'generated' ? handlePlan : handleApply}
-            onViewPreview={() => setShowPlanPreview(true)}
-            onViewCode={() => setShowTerraformCode(true)}
+            onDeploy={handleDeploy}
             onUndo={handleUndo}
             onRedo={handleRedo}
+            onCodeReview={handleCodeReview}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < history.length - 1}
-            deploymentStage={deploymentStage}
-            isGeneratingTerraform={isGeneratingTerraform}
           />
 
           <ReactFlowProvider>
@@ -608,10 +607,7 @@ Plan: 1 to add, 0 to change, 0 to destroy.`;
       {showAIChat && (
         <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl z-50 flex flex-col">
           <div className="p-4 border-b border-border flex items-center justify-between">
-            <div>
-              <h3 className="font-semibold">AI Infrastructure Assistant</h3>
-              <p className="text-xs text-muted-foreground">Powered by Fetch.ai ASI:One</p>
-            </div>
+            <h3 className="font-semibold">AI Code Review Assistant</h3>
             <Button
               size="icon"
               variant="ghost"
@@ -620,49 +616,23 @@ Plan: 1 to add, 0 to change, 0 to destroy.`;
               ×
             </Button>
           </div>
-          <div className="flex-1 p-4 overflow-y-auto space-y-3">
-            {chatMessages.map((msg, idx) => (
-              <div
-                key={idx}
-                className={`rounded-lg p-3 text-sm ${
-                  msg.role === 'assistant'
-                    ? 'bg-muted/50 text-foreground'
-                    : 'bg-primary/10 text-foreground ml-8'
-                }`}
-              >
-                <p className="whitespace-pre-wrap">{msg.content}</p>
-              </div>
-            ))}
-            {isChatLoading && (
+          <div className="flex-1 p-4 overflow-y-auto">
+            <div className="space-y-4">
               <div className="bg-muted/50 rounded-lg p-3 text-sm">
-                <p className="text-muted-foreground animate-pulse">ASI:One is thinking...</p>
+                <p className="text-muted-foreground">
+                  Hello! I'm your AI assistant. I can help you review your
+                  infrastructure code, suggest improvements, and answer
+                  questions about best practices.
+                </p>
               </div>
-            )}
+            </div>
           </div>
           <div className="p-4 border-t border-border">
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={chatInput}
-                onChange={(e) => setChatInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSendChatMessage();
-                  }
-                }}
-                placeholder="Ask about your infrastructure..."
-                className="flex-1 px-3 py-2 text-sm rounded-md border border-input bg-background"
-                disabled={isChatLoading}
-              />
-              <Button
-                size="sm"
-                onClick={handleSendChatMessage}
-                disabled={isChatLoading || !chatInput.trim()}
-              >
-                Send
-              </Button>
-            </div>
+            <input
+              type="text"
+              placeholder="Ask about your infrastructure..."
+              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background"
+            />
           </div>
         </div>
       )}
@@ -682,16 +652,12 @@ Plan: 1 to add, 0 to change, 0 to destroy.`;
         onDeleteProject={handleDeleteProject}
       />
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
-      <PlanPreviewDialog
-        open={showPlanPreview}
-        onOpenChange={setShowPlanPreview}
-        planOutput={planOutput}
-        onApply={handleApply}
-      />
-      <TerraformPreviewDialog
-        open={showTerraformCode}
-        onOpenChange={setShowTerraformCode}
-        terraformCode={terraformCode}
+      <AIReviewDialog
+        isOpen={showAIReview}
+        onClose={() => setShowAIReview(false)}
+        analysis={aiReviewAnalysis}
+        isLoading={isAIReviewLoading}
+        error={aiReviewError}
       />
     </div>
   );

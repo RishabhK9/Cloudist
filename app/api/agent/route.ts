@@ -1,78 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
 import Anthropic from '@anthropic-ai/sdk'
-import OpenAI from 'openai'
 
-// Initialize Anthropic client for Claude (used for Terraform generation in another endpoint)
+// Initialize Claude (Anthropic) client server-side
 const anthropic = new Anthropic({
   apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
-// Initialize OpenAI client as fallback
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-})
-
-// Fetch.ai ASI:One Configuration (used for AI chat)
-const ASI_ONE_API_KEY = process.env.ASI1_API_KEY || process.env.FETCH_AI_API_KEY || process.env.ASI_ONE_API_KEY
-const ASI_ONE_ENDPOINT = process.env.ASI1_ENDPOINT || 'https://api.asi1.ai/v1/chat/completions'
-
-// ASI:One system prompt optimized for infrastructure reasoning
-const ASI_SYSTEM_PROMPT = `You are an expert cloud infrastructure architect powered by Fetch.ai's ASI:One reasoning engine. 
-
-Your role is to:
-- Analyze infrastructure requirements and make optimal architectural decisions
-- Provide detailed reasoning for every recommendation
-- Consider cost, performance, security, and scalability tradeoffs
-- Generate production-ready cloud infrastructure designs
-- Review existing architectures and suggest improvements
-
-When making decisions:
-1. Reason through multiple options
-2. Explain tradeoffs clearly
-3. Provide cost estimates when possible
-4. Prioritize security and best practices
-5. Consider the user's specific use case
-
-Always respond in a helpful, clear manner and explain your reasoning process.`
-
-// ASI:One API call function
-async function callASIOne(messages: any[]) {
-  try {
-    const response = await fetch(ASI_ONE_ENDPOINT, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${ASI_ONE_API_KEY}`,
-      },
-      body: JSON.stringify({
-        model: 'asi1-mini',
-        messages: messages,
-        temperature: 0.7,
-        max_tokens: 1500,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorBody = await response.text()
-      console.error('❌ Fetch.ai error:', errorBody)
-      throw new Error(`ASI:One API error: ${response.statusText}`)
-    }
-
-    const data = await response.json()
-    return data
-  } catch (error) {
-    console.error('❌ Fetch.ai error:', error instanceof Error ? error.message : error)
-    return null
-  }
-}
-
-// Agent tool definitions for both ASI:One and Claude
-const agentTools = [
-  {
+// Agent function definitions
+const agentFunctions = {
+  createInfrastructure: {
     name: "create_infrastructure",
     description: "Create and deploy cloud infrastructure based on user requirements",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: "object" as const,
       properties: {
         infrastructureType: {
           type: "string",
@@ -86,11 +26,11 @@ const agentTools = [
       required: ["infrastructureType", "requirements"]
     }
   },
-  {
+  analyzeArchitecture: {
     name: "analyze_architecture", 
     description: "Analyze and provide insights on cloud architecture",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: "object" as const,
       properties: {
         analysisType: {
           type: "string",
@@ -104,11 +44,11 @@ const agentTools = [
       required: ["analysisType"]
     }
   },
-  {
+  troubleshootIssues: {
     name: "troubleshoot_issues",
     description: "Help debug and resolve infrastructure problems",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: "object" as const,
       properties: {
         issueType: {
           type: "string", 
@@ -122,11 +62,11 @@ const agentTools = [
       required: ["issueType"]
     }
   },
-  {
+  provideBestPractices: {
     name: "provide_best_practices",
     description: "Share relevant cloud architecture best practices and recommendations",
-    input_schema: {
-      type: "object",
+    parameters: {
+      type: "object" as const,
       properties: {
         topic: {
           type: "string",
@@ -140,7 +80,7 @@ const agentTools = [
       required: ["topic"]
     }
   }
-] as const
+}
 
 // Available functions mapping
 const functionMap: Record<string, Function> = {
@@ -213,82 +153,85 @@ Additional services are planned for future releases. You can discuss any cloud s
 
 Be flexible and responsive to what the user actually needs rather than forcing them into predefined categories.`
 
-    // Format messages for ASI:One
-    const asiMessages = [
-      { role: 'system', content: ASI_SYSTEM_PROMPT },
-      ...(conversationHistory || []).slice(-10).filter((msg: any) => msg.role !== 'system'),
-      {
-        role: "user",
-        content: message
-      }
-    ]
-
-    // Try Fetch.ai ASI:One first, fallback to OpenAI if not configured
-    let messageResponse: any
-    
-    if (ASI_ONE_API_KEY) {
-      console.log('🤖 API Route: Calling ASI:One API...')
-      const asiResponse = await callASIOne(asiMessages)
-      
-      if (asiResponse) {
-        const choice = asiResponse.choices[0]
-        messageResponse = choice.message
-      } else {
-        console.log('⚠️ ASI:One failed, falling back to OpenAI...')
-      }
-    }
-    
-    // Fallback to OpenAI if ASI:One not configured or failed
-    if (!messageResponse && process.env.OPENAI_API_KEY) {
-      console.log('🤖 API Route: Using OpenAI fallback...')
-      const openaiMessages = asiMessages.map((msg: any) => ({
-        role: msg.role === 'system' ? 'system' : msg.role,
+    // Format messages for Claude API (Claude doesn't use system role in messages array)
+    const formattedMessages = (conversationHistory || [])
+      .slice(-10)
+      .map((msg: any) => ({
+        role: msg.role === 'assistant' ? 'assistant' : 'user',
         content: msg.content
       }))
-      
-      const openaiResponse = await openai.chat.completions.create({
-        model: 'gpt-4',
-        messages: openaiMessages,
-        temperature: 0.7,
-        max_tokens: 1500,
-      })
-      
-      messageResponse = openaiResponse.choices[0].message
-    }
     
-    if (!messageResponse) {
-      return NextResponse.json({
-        error: 'No AI service configured. Please add ASI1_API_KEY or OPENAI_API_KEY to .env.local',
-        response: 'Please configure an AI API key in .env.local file.'
-      }, { status: 500 })
-    }
+    formattedMessages.push({
+      role: 'user',
+      content: message
+    })
 
-    // Check if the model wants to call a function (ASI:One uses tool_calls format)
-    if (messageResponse.tool_calls && messageResponse.tool_calls.length > 0) {
-      const toolCall = messageResponse.tool_calls[0]
-      if (toolCall.type === 'function') {
-        const functionName = toolCall.function.name
-        const functionArgs = JSON.parse(toolCall.function.arguments || '{}')
+    console.log('🤖 API Route: Calling Claude API...')
+    console.log('🔍 DEBUG: Messages being sent:', JSON.stringify(formattedMessages, null, 2))
+    console.log('🔍 DEBUG: Functions available:', Object.keys(agentFunctions))
 
-        // Call the appropriate handler function
-        const handler = functionMap[functionName]
-        if (handler) {
-          const result = await handler(functionArgs)
-          return NextResponse.json(result)
-        }
+    const response = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 1500,
+      temperature: 0.8,
+      system: systemPrompt,
+      messages: formattedMessages,
+      tools: Object.values(agentFunctions).map(func => ({
+        name: func.name,
+        description: func.description,
+        input_schema: func.parameters
+      }))
+    })
+
+    console.log('✅ API Route: Claude response received')
+    console.log('🔍 DEBUG: Full Claude response:', JSON.stringify(response, null, 2))
+
+    // Claude returns content as an array of blocks
+    const content = response.content
+    console.log('🎯 API Route: Response content blocks:', content.length)
+
+    // Check for tool use in content blocks
+    const toolUseBlock = content.find((block: any) => block.type === 'tool_use')
+    const textBlocks = content.filter((block: any) => block.type === 'text')
+    
+    console.log('🔍 DEBUG: Tool use block:', toolUseBlock)
+    console.log('🔍 DEBUG: Text blocks:', textBlocks)
+
+    // Check if Claude wants to call a tool
+    if (toolUseBlock && toolUseBlock.type === 'tool_use') {
+      const functionName = 'name' in toolUseBlock ? toolUseBlock.name : ''
+      const functionArgs = 'input' in toolUseBlock ? toolUseBlock.input : {}
+      console.log('🔧 API Route: Tool call:', functionName, functionArgs)
+      console.log('🔍 DEBUG: Function args:', functionArgs)
+
+      // Call the appropriate handler function
+      const handler = functionMap[functionName]
+      if (handler) {
+        console.log('⚙️ API Route: Executing handler:', functionName)
+        console.log('🔍 DEBUG: Handler function found:', typeof handler)
+        const result = await handler(functionArgs)
+        console.log('🎉 API Route: Handler result:', JSON.stringify(result, null, 2))
+        console.log('🔍 DEBUG: Returning handler result')
+        return NextResponse.json(result)
+      } else {
+        console.error('❌ API Route: No handler found for:', functionName)
+        console.log('🔍 DEBUG: Available handlers:', Object.keys(functionMap))
       }
     }
 
     // Return regular response if no function call
     console.log('💬 API Route: Returning text response')
+    const textContent = textBlocks.map((block: any) => block.text).join('\n')
     const textResponse = {
       type: 'text',
-      content: messageResponse.content || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
+      content: textContent || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
     }
+    console.log('🔍 DEBUG: Text response:', JSON.stringify(textResponse, null, 2))
     return NextResponse.json(textResponse)
   } catch (error) {
-    console.error('❌ ASI:One agent error:', error instanceof Error ? error.message : error)
+    console.error('❌ Claude agent error:', error)
     console.log('🔍 DEBUG: Error stack:', error instanceof Error ? error.stack : 'No stack trace')
+    console.log('🔍 DEBUG: Error type:', typeof error)
     return NextResponse.json({
       error: 'Failed to process message',
       details: error instanceof Error ? error.message : 'Unknown error'
