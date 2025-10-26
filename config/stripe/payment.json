@@ -1,7 +1,7 @@
 {
   "id": "payment",
   "name": "Payment Processing",
-  "icon": "/stripe/payment.svg",
+  "icon": "/stripe/stripe.svg",
   "category": "Payment",
   "description": "Stripe payment processing and subscription management",
   "terraformType": "",

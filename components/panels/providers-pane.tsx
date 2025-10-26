@@ -25,9 +25,9 @@ const PROVIDERS: Provider[] = [
     id: "aws",
     name: "AWS",
     displayName: "Amazon Web Services",
-    icon: "☁️",
+    icon: "/aws/aws.svg",
     status: "connected",
-    consoleUrl: "https://console.aws.amazon.com"
+    consoleUrl: "https://console.aws.amazon.com",
   },
   {
     id: "gcp",
@@ -35,7 +35,7 @@ const PROVIDERS: Provider[] = [
     displayName: "Google Cloud Platform",
     icon: "🌩️",
     status: "disconnected",
-    consoleUrl: "https://console.cloud.google.com"
+    consoleUrl: "https://console.cloud.google.com",
   },
   {
     id: "azure",
@@ -43,25 +43,25 @@ const PROVIDERS: Provider[] = [
     displayName: "Microsoft Azure",
     icon: "☁️",
     status: "disconnected",
-    consoleUrl: "https://portal.azure.com"
+    consoleUrl: "https://portal.azure.com",
   },
   {
     id: "supabase",
     name: "Supabase",
     displayName: "Supabase",
-    icon: "⚡",
+    icon: "/supabase/supabase-logo-icon.svg",
     status: "disconnected",
-    consoleUrl: "https://supabase.com/dashboard"
+    consoleUrl: "https://supabase.com/dashboard",
   },
   {
     id: "stripe",
     name: "Stripe",
     displayName: "Stripe",
-    icon: "💳",
+    icon: "/stripe/stripe.svg",
     status: "disconnected",
-    consoleUrl: "https://dashboard.stripe.com"
-  }
-]
+    consoleUrl: "https://dashboard.stripe.com",
+  },
+];
 
 interface ProvidersPaneProps {
   currentProvider?: string
@@ -166,7 +166,13 @@ export function ProvidersPane({ currentProvider, nodes = [] }: ProvidersPaneProp
                       isExpanded ? "rotate-90" : ""
                     }`}
                   />
-                  <div className="text-xl">{provider.icon}</div>
+                  <div className="text-xl">
+                    {provider.icon.startsWith('/') ? (
+                      <img src={provider.icon} alt={provider.name} className="w-6 h-6 object-contain" />
+                    ) : (
+                      provider.icon
+                    )}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
