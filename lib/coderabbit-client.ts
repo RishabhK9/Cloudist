@@ -202,12 +202,13 @@ export function convertCodeRabbitToUIFormat(
   }
 
   // Convert findings to issues
+  const severityMap: { [key: string]: 'high' | 'medium' | 'low' } = {
+    critical: 'high',
+    high: 'high',
+    medium: 'medium',
+  };
   const issues = coderabbitResponse.findings.map(finding => ({
-    severity: finding.severity === 'critical' || finding.severity === 'high' 
-      ? 'high' 
-      : finding.severity === 'medium' 
-      ? 'medium' 
-      : 'low',
+    severity: severityMap[finding.severity] || 'low',
     category: finding.category,
     description: finding.title,
     recommendation: finding.suggestion,
