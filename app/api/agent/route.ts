@@ -1,17 +1,17 @@
 import { NextRequest, NextResponse } from 'next/server'
-import OpenAI from 'openai'
+import Anthropic from '@anthropic-ai/sdk'
 
-// Initialize OpenAI client server-side
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+// Initialize Anthropic client server-side
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 })
 
-// Agent function definitions
-const agentFunctions = {
-  createInfrastructure: {
+// Agent tool definitions for Claude
+const agentTools = [
+  {
     name: "create_infrastructure",
     description: "Create and deploy cloud infrastructure based on user requirements",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         infrastructureType: {
@@ -26,10 +26,10 @@ const agentFunctions = {
       required: ["infrastructureType", "requirements"]
     }
   },
-  analyzeArchitecture: {
+  {
     name: "analyze_architecture", 
     description: "Analyze and provide insights on cloud architecture",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         analysisType: {
@@ -44,10 +44,10 @@ const agentFunctions = {
       required: ["analysisType"]
     }
   },
-  troubleshootIssues: {
+  {
     name: "troubleshoot_issues",
     description: "Help debug and resolve infrastructure problems",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         issueType: {
@@ -62,10 +62,10 @@ const agentFunctions = {
       required: ["issueType"]
     }
   },
-  provideBestPractices: {
+  {
     name: "provide_best_practices",
     description: "Share relevant cloud architecture best practices and recommendations",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         topic: {
@@ -80,7 +80,7 @@ const agentFunctions = {
       required: ["topic"]
     }
   }
-}
+] as const
 
 // Available functions mapping
 const functionMap: Record<string, Function> = {
@@ -111,10 +111,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    const messages = [
-      {
-        role: "system",
-        content: `You are Rex, an expert cloud infrastructure consultant and DevOps engineer. You help users with cloud infrastructure questions, architecture design, and deployment guidance.
+    const systemPrompt = `You are Rex, an expert cloud infrastructure consultant and DevOps engineer. You help users with cloud infrastructure questions, architecture design, and deployment guidance.
 
 CURRENT CANVAS STATE: ${canvasContext || 'No canvas context available'}
 
@@ -155,44 +152,45 @@ InfraBlocks currently supports these core AWS services:
 Additional services are planned for future releases. You can discuss any cloud service or concept, but can only create the supported services on the canvas.
 
 Be flexible and responsive to what the user actually needs rather than forcing them into predefined categories.`
-      },
-      ...(conversationHistory || []).slice(-10), // Keep last 10 messages for context
+
+    // Format messages for Claude - filter out system messages
+    const claudeMessages = [
+      ...(conversationHistory || []).slice(-10).filter((msg: any) => msg.role !== 'system'),
       {
         role: "user",
         content: message
       }
     ]
 
-    console.log('🤖 API Route: Calling OpenAI API...')
-    console.log('🔍 DEBUG: Messages being sent:', JSON.stringify(messages, null, 2))
-    console.log('🔍 DEBUG: Functions available:', Object.keys(agentFunctions))
+    console.log('🤖 API Route: Calling Claude API...')
+    console.log('🔍 DEBUG: Messages being sent:', JSON.stringify(claudeMessages, null, 2))
+    console.log('🔍 DEBUG: Tools available:', agentTools.map(t => t.name))
 
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: messages,
-      tools: Object.values(agentFunctions).map(func => ({ type: "function", function: func })),
-      tool_choice: "auto",
-      max_tokens: 1500,
-      temperature: 0.8
+    const response = await anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 4096,
+      temperature: 0.8,
+      system: systemPrompt,
+      messages: claudeMessages,
+      tools: [...agentTools],
     })
 
-    console.log('✅ API Route: OpenAI response received')
-    console.log('🔍 DEBUG: Full OpenAI response:', JSON.stringify(response, null, 2))
+    console.log('✅ API Route: Claude response received')
+    console.log('🔍 DEBUG: Full Claude response:', JSON.stringify(response, null, 2))
 
-    const choice = response.choices[0]
-    const messageResponse = choice.message
-    console.log('🎯 API Route: Response type:', messageResponse.tool_calls ? 'tool_calls' : 'text')
-    console.log('🔍 DEBUG: Message response content:', messageResponse.content)
-    console.log('🔍 DEBUG: Tool calls details:', messageResponse.tool_calls)
+    // Claude's response structure is different - check for tool_use in content blocks
+    const hasToolUse = response.content.some((block: any) => block.type === 'tool_use')
+    console.log('🎯 API Route: Response type:', hasToolUse ? 'tool_use' : 'text')
+    console.log('🔍 DEBUG: Response content blocks:', response.content)
 
-    // Check if the model wants to call a tool
-    if (messageResponse.tool_calls && messageResponse.tool_calls.length > 0) {
-      const toolCall = messageResponse.tool_calls[0]
-      if (toolCall.type === 'function') {
-        const functionName = toolCall.function.name
-        const functionArgs = JSON.parse(toolCall.function.arguments || '{}')
+    // Check if Claude wants to use a tool
+    if (hasToolUse) {
+      const toolUseBlock = response.content.find((block): block is Anthropic.ToolUseBlock => block.type === 'tool_use')
+      if (toolUseBlock) {
+        const functionName = toolUseBlock.name
+        const functionArgs = toolUseBlock.input
         console.log('🔧 API Route: Tool call:', functionName, functionArgs)
-        console.log('🔍 DEBUG: Function args parsed:', functionArgs)
+        console.log('🔍 DEBUG: Function args:', functionArgs)
 
         // Call the appropriate handler function
         const handler = functionMap[functionName]
@@ -210,16 +208,17 @@ Be flexible and responsive to what the user actually needs rather than forcing t
       }
     }
 
-    // Return regular response if no function call
+    // Return regular text response if no tool use
     console.log('💬 API Route: Returning text response')
+    const textContent = response.content.find((block): block is Anthropic.TextBlock => block.type === 'text')
     const textResponse = {
       type: 'text',
-      content: messageResponse.content || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
+      content: textContent?.text || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
     }
     console.log('🔍 DEBUG: Text response:', JSON.stringify(textResponse, null, 2))
     return NextResponse.json(textResponse)
   } catch (error) {
-    console.error('❌ OpenAI agent error:', error)
+    console.error('❌ Claude agent error:', error)
     console.log('🔍 DEBUG: Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     console.log('🔍 DEBUG: Error type:', typeof error)
     return NextResponse.json({
