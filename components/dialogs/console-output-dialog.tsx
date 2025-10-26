@@ -31,6 +31,29 @@ export function ConsoleOutputDialog({
   const [autoScroll, setAutoScroll] = useState(true)
   const [displayedOutput, setDisplayedOutput] = useState('')
   const previousOutputRef = useRef('')
+  const streamIntervalRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Reset effect: clear state when dialog reopens or output becomes empty
+  useEffect(() => {
+    // Clear any running interval first
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current)
+      streamIntervalRef.current = null
+    }
+
+    // Reset when dialog closes or output becomes empty
+    if (!open || output === '') {
+      setDisplayedOutput('')
+      previousOutputRef.current = ''
+      return
+    }
+
+    // Reset when streaming is disabled and output changes
+    if (!enableStreaming) {
+      setDisplayedOutput(output)
+      previousOutputRef.current = output
+    }
+  }, [open, output, enableStreaming])
 
   // Streaming effect: gradually show new output
   useEffect(() => {
@@ -44,18 +67,31 @@ export function ConsoleOutputDialog({
 
     previousOutputRef.current = output
     
+    // Clear any existing interval before starting new one
+    if (streamIntervalRef.current) {
+      clearInterval(streamIntervalRef.current)
+    }
+    
     // Stream new content character by character (fast)
     let index = 0
-    const streamInterval = setInterval(() => {
+    streamIntervalRef.current = setInterval(() => {
       if (index < newContent.length) {
         setDisplayedOutput(prev => prev + newContent[index])
         index++
       } else {
-        clearInterval(streamInterval)
+        if (streamIntervalRef.current) {
+          clearInterval(streamIntervalRef.current)
+          streamIntervalRef.current = null
+        }
       }
     }, 1) // 1ms per character for fast streaming
 
-    return () => clearInterval(streamInterval)
+    return () => {
+      if (streamIntervalRef.current) {
+        clearInterval(streamIntervalRef.current)
+        streamIntervalRef.current = null
+      }
+    }
   }, [output, enableStreaming])
 
   // Auto-scroll to bottom when output changes (if autoScroll is enabled)
