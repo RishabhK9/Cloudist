@@ -45,7 +45,17 @@ export default function InfrastructureBuilder() {
   const [showTerraformCode, setShowTerraformCode] = useState(false);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
   
-  // Deployment State
+  // AI Chat state (Fetch.ai ASI:One)
+  const [chatMessages, setChatMessages] = useState<Array<{role: 'user' | 'assistant', content: string}>>([
+    {
+      role: 'assistant',
+      content: 'Hello! I\'m powered by Fetch.ai\'s ASI:One. I can help you design cloud infrastructure, review your architecture, and answer questions about best practices. What would you like to build?'
+    }
+  ]);
+  const [chatInput, setChatInput] = useState('');
+  const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Deployment State (Claude Terraform Generation)
   const [terraformCode, setTerraformCode] = useState<string | null>(null);
   const [deploymentStage, setDeploymentStage] = useState<'none' | 'generated' | 'planned' | 'applying' | 'applied'>('none');
   const [planOutput, setPlanOutput] = useState<string | null>(null);
@@ -303,6 +313,48 @@ export default function InfrastructureBuilder() {
     }
   };
 
+  // Handle AI Chat Messages (Fetch.ai ASI:One)
+  const handleSendChatMessage = async () => {
+    if (!chatInput.trim() || isChatLoading) return;
+
+    const userMessage = chatInput.trim();
+    setChatInput('');
+    
+    // Add user message to chat
+    setChatMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    setIsChatLoading(true);
+
+    try {
+      console.log('💬 Sending message to ASI:One...');
+      const response = await fetch('/api/agent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: userMessage })
+      });
+
+      if (!response.ok) {
+        throw new Error('Failed to get response from AI');
+      }
+
+      const data = await response.json();
+      console.log('✅ ASI:One response:', data);
+
+      // Add assistant response to chat
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: data.response || data.content || 'I apologize, I had trouble processing that request.'
+      }]);
+    } catch (error) {
+      console.error('❌ Chat error:', error);
+      setChatMessages(prev => [...prev, {
+        role: 'assistant',
+        content: 'Sorry, I encountered an error. Please try again.'
+      }]);
+    } finally {
+      setIsChatLoading(false);
+    }
+  };
+
   const handleGenerateTerraform = async () => {
     // Clear previous error and plan output
     setDeploymentError(null);
@@ -556,7 +608,10 @@ Plan: 1 to add, 0 to change, 0 to destroy.`;
       {showAIChat && (
         <div className="fixed bottom-24 right-6 w-96 h-[500px] bg-card border border-border rounded-lg shadow-2xl z-50 flex flex-col">
           <div className="p-4 border-b border-border flex items-center justify-between">
-            <h3 className="font-semibold">AI Code Review Assistant</h3>
+            <div>
+              <h3 className="font-semibold">AI Infrastructure Assistant</h3>
+              <p className="text-xs text-muted-foreground">Powered by Fetch.ai ASI:One</p>
+            </div>
             <Button
               size="icon"
               variant="ghost"
@@ -565,23 +620,49 @@ Plan: 1 to add, 0 to change, 0 to destroy.`;
               ×
             </Button>
           </div>
-          <div className="flex-1 p-4 overflow-y-auto">
-            <div className="space-y-4">
-              <div className="bg-muted/50 rounded-lg p-3 text-sm">
-                <p className="text-muted-foreground">
-                  Hello! I'm your AI assistant. I can help you review your
-                  infrastructure code, suggest improvements, and answer
-                  questions about best practices.
-                </p>
+          <div className="flex-1 p-4 overflow-y-auto space-y-3">
+            {chatMessages.map((msg, idx) => (
+              <div
+                key={idx}
+                className={`rounded-lg p-3 text-sm ${
+                  msg.role === 'assistant'
+                    ? 'bg-muted/50 text-foreground'
+                    : 'bg-primary/10 text-foreground ml-8'
+                }`}
+              >
+                <p className="whitespace-pre-wrap">{msg.content}</p>
               </div>
-            </div>
+            ))}
+            {isChatLoading && (
+              <div className="bg-muted/50 rounded-lg p-3 text-sm">
+                <p className="text-muted-foreground animate-pulse">ASI:One is thinking...</p>
+              </div>
+            )}
           </div>
           <div className="p-4 border-t border-border">
-            <input
-              type="text"
-              placeholder="Ask about your infrastructure..."
-              className="w-full px-3 py-2 text-sm rounded-md border border-input bg-background"
-            />
+            <div className="flex gap-2">
+              <input
+                type="text"
+                value={chatInput}
+                onChange={(e) => setChatInput(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    handleSendChatMessage();
+                  }
+                }}
+                placeholder="Ask about your infrastructure..."
+                className="flex-1 px-3 py-2 text-sm rounded-md border border-input bg-background"
+                disabled={isChatLoading}
+              />
+              <Button
+                size="sm"
+                onClick={handleSendChatMessage}
+                disabled={isChatLoading || !chatInput.trim()}
+              >
+                Send
+              </Button>
+            </div>
           </div>
         </div>
       )}
