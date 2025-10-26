@@ -44,16 +44,17 @@ export function ConsoleOutputDialog({
 
     previousOutputRef.current = output
     
-    // Stream new content character by character (fast)
+    // Stream new content in small batches for smooth and efficient animation
     let index = 0
+    const charsPerTick = 4 // Adjust for desired speed
     const streamInterval = setInterval(() => {
       if (index < newContent.length) {
-        setDisplayedOutput(prev => prev + newContent[index])
-        index++
+        setDisplayedOutput(prev => prev + newContent.slice(index, index + charsPerTick))
+        index += charsPerTick
       } else {
         clearInterval(streamInterval)
       }
-    }, 1) // 1ms per character for fast streaming
+    }, 16) // 16ms per tick (~60fps)
 
     return () => clearInterval(streamInterval)
   }, [output, enableStreaming])
