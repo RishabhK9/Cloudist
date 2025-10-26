@@ -1,0 +1,73 @@
+{
+  "id": "kubernetes",
+  "name": "EKS (Kubernetes)",
+  "icon": "/aws/Arch_Amazon-Elastic-Kubernetes-Service_64.svg",
+  "category": "Containers",
+  "description": "Managed Kubernetes service",
+  "terraformType": "aws_eks_cluster",
+  "defaultConfig": {
+    "name": "my-eks-cluster",
+    "version": "1.28",
+    "role_arn": "",
+    "enabled_cluster_log_types": ["api", "audit"],
+    "endpoint_private_access": false,
+    "endpoint_public_access": true
+  },
+  "configSchema": {
+    "name": {
+      "type": "string",
+      "label": "Cluster Name",
+      "description": "Name of the EKS cluster",
+      "default": "my-eks-cluster",
+      "required": true
+    },
+    "version": {
+      "type": "select",
+      "label": "Kubernetes Version",
+      "description": "Kubernetes version to use",
+      "options": ["1.28", "1.27", "1.26", "1.25"],
+      "default": "1.28",
+      "required": true
+    },
+    "role_arn": {
+      "type": "string",
+      "label": "IAM Role ARN",
+      "description": "ARN of the IAM role for the cluster (auto-generated if not specified)",
+      "required": false
+    },
+    "enabled_cluster_log_types": {
+      "type": "multiselect",
+      "label": "Cluster Logging",
+      "description": "Types of logging to enable",
+      "options": ["api", "audit", "authenticator", "controllerManager", "scheduler"],
+      "default": ["api", "audit"],
+      "required": false
+    },
+    "endpoint_private_access": {
+      "type": "boolean",
+      "label": "Private Endpoint Access",
+      "description": "Enable private API server endpoint",
+      "default": false
+    },
+    "endpoint_public_access": {
+      "type": "boolean",
+      "label": "Public Endpoint Access",
+      "description": "Enable public API server endpoint",
+      "default": true
+    },
+    "subnet_ids": {
+      "type": "multiselect",
+      "label": "Subnet IDs",
+      "description": "List of subnet IDs for the cluster (auto-generated if not specified)",
+      "options": [],
+      "required": false
+    },
+    "security_group_ids": {
+      "type": "multiselect",
+      "label": "Security Group IDs",
+      "description": "Additional security groups for the cluster (auto-generated if not specified)",
+      "options": [],
+      "required": false
+    }
+  }
+}

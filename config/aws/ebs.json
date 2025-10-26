@@ -1,0 +1,84 @@
+{
+  "id": "ebs",
+  "name": "EBS Volume",
+  "icon": "/aws/Arch_Amazon-Elastic-Block-Store_64.svg",
+  "category": "Storage",
+  "description": "Block storage volumes for EC2 instances",
+  "terraformType": "aws_ebs_volume",
+  "defaultConfig": {
+    "availability_zone": "us-east-1a",
+    "size": 20,
+    "type": "gp3",
+    "encrypted": false,
+    "iops": 3000,
+    "throughput": 125
+  },
+  "configSchema": {
+    "availability_zone": {
+      "type": "string",
+      "label": "Availability Zone",
+      "description": "The AZ where the EBS volume will be created",
+      "default": "us-east-1a",
+      "required": true
+    },
+    "size": {
+      "type": "number",
+      "label": "Size (GB)",
+      "description": "The size of the volume in gigabytes",
+      "default": 20,
+      "required": true,
+      "validation": {
+        "min": 1,
+        "max": 16384
+      }
+    },
+    "type": {
+      "type": "select",
+      "label": "Volume Type",
+      "description": "The type of EBS volume",
+      "options": ["gp3", "gp2", "io1", "io2", "st1", "sc1"],
+      "default": "gp3",
+      "required": true
+    },
+    "iops": {
+      "type": "number",
+      "label": "IOPS",
+      "description": "The amount of IOPS to provision for the disk (only for gp3, io1, io2)",
+      "default": 3000,
+      "required": false,
+      "validation": {
+        "min": 3000,
+        "max": 16000
+      }
+    },
+    "throughput": {
+      "type": "number",
+      "label": "Throughput (MB/s)",
+      "description": "The throughput to provision for gp3 volumes",
+      "default": 125,
+      "required": false,
+      "validation": {
+        "min": 125,
+        "max": 1000
+      }
+    },
+    "encrypted": {
+      "type": "boolean",
+      "label": "Encryption",
+      "description": "Enable encryption at rest",
+      "default": false
+    },
+    "kms_key_id": {
+      "type": "string",
+      "label": "KMS Key ID",
+      "description": "The ARN of the AWS Key Management Service key (optional)",
+      "required": false
+    },
+    "snapshot_id": {
+      "type": "string",
+      "label": "Snapshot ID",
+      "description": "A snapshot to base the volume on (optional)",
+      "required": false
+    }
+  }
+}
