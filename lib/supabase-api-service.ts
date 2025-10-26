@@ -1,4 +1,4 @@
-import { SupabaseCredentials } from './credential-manager'
+import { SupabaseCredentials } from '@/lib/credential-manager'
 
 const SUPABASE_API_BASE_URL = 'https://api.supabase.com/v1'
 

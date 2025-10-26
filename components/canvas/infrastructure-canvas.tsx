@@ -117,8 +117,10 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   const [awsAccessKey, setAwsAccessKey] = useState("")
   const [awsSecretKey, setAwsSecretKey] = useState("")
   const [awsRegion, setAwsRegion] = useState("us-east-1")
-  const [supabaseUrl, setSupabaseUrl] = useState("")
-  const [supabaseKey, setSupabaseKey] = useState("")
+  
+  // Services state
+  const [services, setServices] = useState<any[]>([])
+  const [servicesLoaded, setServicesLoaded] = useState(false)
   const [supabaseAccessToken, setSupabaseAccessToken] = useState("")
 
   // Load credentials on component mount
@@ -135,8 +137,6 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         }
         
         if (supabaseCreds) {
-          setSupabaseUrl(supabaseCreds.url || "")
-          setSupabaseKey(supabaseCreds.key || "")
           setSupabaseAccessToken(supabaseCreds.accessToken || "")
         }
       } catch (error) {
@@ -159,21 +159,18 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         })
       }
       
-      // Save Supabase credentials
-      if (supabaseUrl && supabaseKey && supabaseAccessToken) {
+      // Save Supabase credentials (only access token)
+      if (supabaseAccessToken) {
         await CredentialManager.saveCredentials('supabase', {
-          url: supabaseUrl,
-          key: supabaseKey,
           accessToken: supabaseAccessToken
         })
-        
-        // Set environment variable for Supabase access token
-        if (typeof window !== 'undefined') {
-          // Store in localStorage for the current session
-          localStorage.setItem('SUPABASE_ACCESS_TOKEN', supabaseAccessToken)
-          console.log('Supabase access token environment variable set')
-        }
       }
+      
+      // Trigger a storage event to notify other components
+      window.dispatchEvent(new StorageEvent('storage', {
+        key: 'credentials_updated',
+        newValue: 'true'
+      }))
       
       setIsSettingsOpen(false)
       console.log('Credentials saved successfully')
@@ -990,23 +987,58 @@ provider "aws" {
       return
     }
 
-    // Check if credentials are configured
-    if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
-      setDeploymentError(`No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`)
-      return
+    // Check for Supabase nodes
+    const hasSupabaseNodes = nodes.some(node => 
+      node.data?.provider === 'supabase' || 
+      (typeof node.data?.type === 'string' && node.data.type.includes('supabase'))
+    )
+    
+    const hasCloudProviderNodes = nodes.some(node => 
+      node.data?.provider === 'aws' || 
+      node.data?.provider === 'gcp' || 
+      node.data?.provider === 'azure'
+    )
+
+    // Determine deployment type and check credentials
+    let deploymentProvider: 'aws' | 'gcp' | 'azure' | 'supabase' | 'hybrid' = provider as any
+    
+    if (hasSupabaseNodes && !hasCloudProviderNodes) {
+      // Supabase-only deployment
+      deploymentProvider = 'supabase'
+      if (!CredentialManager.hasCredentials('supabase')) {
+        setDeploymentError("Supabase credentials required for Supabase services. Please configure your Supabase access token in settings.")
+        return
+      }
+    } else if (hasSupabaseNodes && hasCloudProviderNodes) {
+      // Hybrid deployment
+      deploymentProvider = 'hybrid'
+      if (!CredentialManager.hasCredentials('supabase')) {
+        setDeploymentError("Supabase credentials required for hybrid deployment. Please configure your Supabase access token in settings.")
+        return
+      }
+      if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
+        setDeploymentError(`No ${provider.toUpperCase()} credentials configured for hybrid deployment. Please configure credentials in settings.`)
+        return
+      }
+    } else {
+      // Cloud-only deployment
+      if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
+        setDeploymentError(`No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`)
+        return
+      }
     }
 
-  // Reset progress UI when starting a new deployment
-  setFakeProgress(0)
-  setIsProgressVisible(true)
-  setDeploymentError(null)
-  setDeploymentStatus(null)
-  setIsDeploying(true)
+    // Reset progress UI when starting a new deployment
+    setFakeProgress(0)
+    setIsProgressVisible(true)
+    setDeploymentError(null)
+    setDeploymentStatus(null)
+    setIsDeploying(true)
 
     try {
       const deploymentRequest = {
         name: `Infrastructure Deployment ${new Date().toLocaleString()}`,
-        provider: provider as 'aws' | 'gcp' | 'azure',
+        provider: deploymentProvider,
         nodes: nodes,
         edges: edges,
         autoApprove: false
@@ -1279,36 +1311,17 @@ provider "aws" {
                   </div>
                   
                   <div className="space-y-2">
-                    <Label htmlFor="supabase-url">Project URL</Label>
-                    <Input
-                      id="supabase-url"
-                      type="url"
-                      value={supabaseUrl}
-                      onChange={(e) => setSupabaseUrl(e.target.value)}
-                      placeholder="https://your-project.supabase.co"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
-                    <Label htmlFor="supabase-key">API Key</Label>
-                    <Input
-                      id="supabase-key"
-                      type="password"
-                      value={supabaseKey}
-                      onChange={(e) => setSupabaseKey(e.target.value)}
-                      placeholder="Enter your API key"
-                    />
-                  </div>
-                  
-                  <div className="space-y-2">
                     <Label htmlFor="supabase-access-token">Access Token</Label>
                     <Input
                       id="supabase-access-token"
                       type="password"
                       value={supabaseAccessToken}
                       onChange={(e) => setSupabaseAccessToken(e.target.value)}
-                      placeholder="Enter your Supabase access token"
+                      placeholder="sbp_..."
                     />
+                    <p className="text-xs text-gray-500">
+                      Get your access token from <a href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Supabase Dashboard</a>
+                    </p>
                   </div>
                 </div>
               </div>

@@ -84,9 +84,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
 
   // Terraform Generation State
   const [terraformCode, setTerraformCode] = useState<string | null>(null);
-  const [deploymentStage, setDeploymentStage] = useState<'none' | 'generated' | 'planned' | 'applying' | 'applied'>('none');
   const [planOutput, setPlanOutput] = useState<string | null>(null);
-  const [isGeneratingTerraform, setIsGeneratingTerraform] = useState(false);
   const [showTerraformCode, setShowTerraformCode] = useState(false);
   const [showPlanPreview, setShowPlanPreview] = useState(false);
 
@@ -364,7 +362,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
 
     // Get credentials for the current provider
     const provider = currentProject?.provider || 'aws';
-    const credentials = CredentialManager.getCredentials(provider);
+    const credentials = CredentialManager.getCredentials(provider as keyof typeof CredentialManager.prototype);
 
     if (!credentials) {
       setDeploymentError(
@@ -466,7 +464,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
 
     // Get credentials for the current provider
     const provider = currentProject?.provider || 'aws';
-    const credentials = CredentialManager.getCredentials(provider);
+    const credentials = CredentialManager.getCredentials(provider as keyof typeof CredentialManager.prototype);
 
     if (!credentials) {
       setDeploymentError(
@@ -861,7 +859,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
             onPlanOrApply={handlePlanOrApply}
             onUndo={handleUndo}
             onRedo={handleRedo}
-            onCodeReview={handleCodeReview}
+            onAIReview={handleCodeReview}
             onViewCode={() => setShowTerraformCode(true)}
             onViewPreview={() => setShowPlanPreview(true)}
             canUndo={historyIndex > 0}

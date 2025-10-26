@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useState, useEffect } from "react"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { 
@@ -10,13 +10,13 @@ import {
   Info, 
   ExternalLink
 } from "lucide-react"
+import { CredentialManager } from "@/lib/credential-manager"
 
 interface Provider {
   id: string
   name: string
   displayName: string
   icon: string
-  status: "connected" | "disconnected"
   consoleUrl?: string
 }
 
@@ -26,7 +26,6 @@ const PROVIDERS: Provider[] = [
     name: "AWS",
     displayName: "Amazon Web Services",
     icon: "/aws/aws.svg",
-    status: "connected",
     consoleUrl: "https://console.aws.amazon.com",
   },
   {
@@ -34,7 +33,6 @@ const PROVIDERS: Provider[] = [
     name: "GCP",
     displayName: "Google Cloud Platform",
     icon: "🌩️",
-    status: "disconnected",
     consoleUrl: "https://console.cloud.google.com",
   },
   {
@@ -42,7 +40,6 @@ const PROVIDERS: Provider[] = [
     name: "Azure",
     displayName: "Microsoft Azure",
     icon: "☁️",
-    status: "disconnected",
     consoleUrl: "https://portal.azure.com",
   },
   {
@@ -50,7 +47,6 @@ const PROVIDERS: Provider[] = [
     name: "Supabase",
     displayName: "Supabase",
     icon: "/supabase/supabase-logo-icon.svg",
-    status: "disconnected",
     consoleUrl: "https://supabase.com/dashboard",
   },
   {
@@ -58,7 +54,6 @@ const PROVIDERS: Provider[] = [
     name: "Stripe",
     displayName: "Stripe",
     icon: "/stripe/stripe.svg",
-    status: "disconnected",
     consoleUrl: "https://dashboard.stripe.com",
   },
 ];
@@ -70,6 +65,40 @@ interface ProvidersPaneProps {
 
 export function ProvidersPane({ currentProvider, nodes = [] }: ProvidersPaneProps) {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
+  const [credentialStatus, setCredentialStatus] = useState<Record<string, boolean>>({})
+
+  // Check credential status for all providers
+  const checkCredentials = async () => {
+    const status: Record<string, boolean> = {}
+    
+    for (const provider of PROVIDERS) {
+      try {
+        const hasCredentials = CredentialManager.hasCredentials(provider.id as any)
+        status[provider.id] = hasCredentials
+      } catch (error) {
+        console.error(`Error checking credentials for ${provider.id}:`, error)
+        status[provider.id] = false
+      }
+    }
+    
+    setCredentialStatus(status)
+  }
+
+  useEffect(() => {
+    checkCredentials()
+  }, [])
+
+  // Listen for credential changes (storage events)
+  useEffect(() => {
+    const handleStorageChange = (e: StorageEvent) => {
+      if (e.key?.startsWith('credentials_') || e.key === 'credentials_updated') {
+        checkCredentials()
+      }
+    }
+
+    window.addEventListener('storage', handleStorageChange)
+    return () => window.removeEventListener('storage', handleStorageChange)
+  }, [])
 
   // Helper function to determine provider from block type
   const getProviderFromBlockType = (type: string): string | null => {
@@ -186,10 +215,10 @@ export function ProvidersPane({ currentProvider, nodes = [] }: ProvidersPaneProp
                     </div>
                     <div className="flex items-center gap-2 mt-0.5">
                       <Badge 
-                        variant={provider.status === "connected" ? "default" : "secondary"}
+                        variant={credentialStatus[provider.id] ? "default" : "secondary"}
                         className="text-xs"
                       >
-                        {provider.status === "connected" ? "Connected" : "Disconnected"}
+                        {credentialStatus[provider.id] ? "Connected" : "Disconnected"}
                       </Badge>
                     </div>
                   </div>
