@@ -46,9 +46,12 @@ export class TerraformGenerator {
       const config = this.generateResourceConfig(node)
 
       // Add the main resource
+      // Safely get resource name with multiple fallbacks (using stable suffix from node.id)
+      const resourceName = node.data?.name || node.data?.id || node.id || `resource_${this.getStableSuffix(node.id)}`
+      
       resources.push({
         type: node.data.terraformType as string,
-        name: this.sanitizeName((node.data.name as string) || (node.data.id as string)),
+        name: this.sanitizeName(resourceName),
         config,
         dependencies,
       })
@@ -245,14 +248,14 @@ export class TerraformGenerator {
           instance_type: config.instance_type || "t3.micro",
           key_name: config.key_name || null,
           tags: {
-            Name: config.name || `${node.data.name}-instance-${Date.now()}`,
+            Name: config.name || `${node.data.name}-instance-${this.getStableSuffix(node.id)}`,
             Environment: "terraform-generated",
           },
         }
 
       case "api_gateway":
         return {
-          name: config.name || `api-${Date.now()}`,
+          name: config.name || `api-${this.getStableSuffix(node.id)}`,
           description: config.description || "REST API",
           endpoint_configuration: config.endpoint_configuration ? {
             types: [config.endpoint_configuration],
@@ -263,7 +266,7 @@ export class TerraformGenerator {
 
       case "dynamodb":
         return {
-          name: config.table_name || `${this.sanitizeName(node.data.name as string)}-table-${Date.now()}`,
+          name: config.table_name || `${this.sanitizeName(node.data.name as string)}-table-${this.getStableSuffix(node.id)}`,
           billing_mode: config.billing_mode || "PAY_PER_REQUEST",
           hash_key: config.hash_key || "id",
           ...(config.range_key && { range_key: config.range_key }),
@@ -288,7 +291,7 @@ export class TerraformGenerator {
 
       case "s3":
         return {
-          bucket: config.bucket_name || `${this.sanitizeName(node.data.name as string)}-bucket-${Date.now()}`,
+          bucket: config.bucket_name || `${this.sanitizeName(node.data.name as string)}-bucket-${this.getStableSuffix(node.id)}`,
           tags: {
             Name: config.name || node.data.name,
             Environment: "terraform-generated",
@@ -297,12 +300,12 @@ export class TerraformGenerator {
 
       case "rds":
         return {
-          identifier: config.db_name || `${this.sanitizeName(node.data.name as string)}-db-${Date.now()}`,
+          identifier: config.db_name || `${this.sanitizeName(node.data.name as string)}-db-${this.getStableSuffix(node.id)}`,
           engine: config.engine || "mysql",
           engine_version: this.getEngineVersion(config.engine || "mysql"),
           instance_class: config.instance_class || "db.t3.micro",
           allocated_storage: Number.parseInt(config.allocated_storage) || 20,
-          db_name: config.db_name || `mydb_${Date.now()}`,
+          db_name: config.db_name || `mydb_${this.getStableSuffix(node.id)}`,
           username: "admin",
           password: config.password || "password123",
           skip_final_snapshot: true,
@@ -317,7 +320,7 @@ export class TerraformGenerator {
         const useInlineCode = !config.s3_bucket && !config.s3_key
 
         return {
-          function_name: config.function_name || `${resourceName}-function-${Date.now()}`,
+          function_name: config.function_name || `${resourceName}-function-${this.getStableSuffix(node.id)}`,
           runtime: config.runtime || "nodejs18.x",
           handler: "index.handler",
           ...(useInlineCode ? {
@@ -348,7 +351,7 @@ export class TerraformGenerator {
 
       case "alb":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-alb-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-alb-${this.getStableSuffix(node.id)}`,
           load_balancer_type: config.load_balancer_type || "application",
           scheme: config.scheme || "internet-facing",
           subnets: [this.getSubnetReference(node.id)],
@@ -361,7 +364,7 @@ export class TerraformGenerator {
 
       case "sqs":
         const sqsConfig: Record<string, any> = {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-queue-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-queue-${this.getStableSuffix(node.id)}`,
           visibility_timeout_seconds: config.visibility_timeout_seconds || 30,
           message_retention_seconds: config.message_retention_seconds || 1209600,
           delay_seconds: config.delay_seconds || 0,
@@ -399,7 +402,7 @@ export class TerraformGenerator {
     switch (serviceId) {
       case "compute":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-instance-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-instance-${this.getStableSuffix(node.id)}`,
           machine_type: config.machine_type || "e2-micro",
           zone: config.zone || "us-central1-a",
           boot_disk: {
@@ -418,7 +421,7 @@ export class TerraformGenerator {
 
       case "storage":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-bucket-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-bucket-${this.getStableSuffix(node.id)}`,
           location: config.location || "US",
           storage_class: config.storage_class || "STANDARD",
           labels: {
@@ -428,7 +431,7 @@ export class TerraformGenerator {
 
       case "sql":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-db-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-db-${this.getStableSuffix(node.id)}`,
           database_version: config.database_version || "MYSQL_8_0",
           tier: config.tier || "db-f1-micro",
           settings: {
@@ -446,7 +449,7 @@ export class TerraformGenerator {
     switch (serviceId) {
       case "vm":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-vm-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-vm-${this.getStableSuffix(node.id)}`,
           resource_group_name: "azurerm_resource_group.main.name",
           location: config.location || "East US",
           size: config.vm_size || "Standard_B1s",
@@ -470,7 +473,7 @@ export class TerraformGenerator {
 
       case "blob":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}storage-${Date.now()}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}storage-${this.getStableSuffix(node.id)}`,
           resource_group_name: "azurerm_resource_group.main.name",
           location: config.location || "East US",
           account_tier: config.account_tier || "Standard",
@@ -492,9 +495,17 @@ export class TerraformGenerator {
       if (edge.target === nodeId) {
         const sourceNode = this.nodes.find((n) => n.id === edge.source)
         if (sourceNode) {
-          dependencies.push(
-            `${sourceNode.data.terraformType as string}.${this.sanitizeName((sourceNode.data.name as string) || (sourceNode.data.id as string))}`,
-          )
+          // Safely get the name with fallback to node.id (always present in React Flow)
+          const nodeName = sourceNode.data?.name || sourceNode.data?.id || sourceNode.id
+          // Get terraformType without fallback - skip if missing
+          const terraformType = sourceNode.data?.terraformType
+          
+          // Only add dependency if we have both valid values
+          if (nodeName && terraformType) {
+            dependencies.push(
+              `${terraformType}.${this.sanitizeName(nodeName)}`,
+            )
+          }
         }
       }
     })
@@ -542,7 +553,9 @@ export class TerraformGenerator {
     const outputs: Record<string, any> = {}
 
     this.nodes.forEach((node) => {
-      const resourceName = this.sanitizeName((node.data.name as string) || (node.data.id as string))
+      // Safely get resource name - node.id is always present in React Flow
+      const nodeName = node.data?.name || node.data?.id || node.id
+      const resourceName = this.sanitizeName(nodeName)
       const resourceType = node.data.terraformType as string
 
       switch (node.data.id) {
@@ -633,11 +646,28 @@ export class TerraformGenerator {
   }
 
   private sanitizeName(name: string): string {
+    // Handle undefined, null, or non-string values
+    if (!name || typeof name !== 'string') {
+      console.warn('sanitizeName received invalid input:', name)
+      return 'unknown_resource'
+    }
+    
     return name
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "_")
       .replace(/_+/g, "_")
       .replace(/^_|_$/g, "")
+  }
+
+  // Generate a stable short hash from node.id for deterministic resource naming
+  private getStableSuffix(nodeId: string): string {
+    let hash = 0
+    for (let i = 0; i < nodeId.length; i++) {
+      const char = nodeId.charCodeAt(i)
+      hash = ((hash << 5) - hash) + char
+      hash = hash & hash // Convert to 32bit integer
+    }
+    return Math.abs(hash).toString(36).substring(0, 6)
   }
 
   private getDefaultRegion(): string {

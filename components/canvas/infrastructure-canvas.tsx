@@ -42,18 +42,18 @@ import {
 import GlassyPaneContainer from '@/src/cedar/components/containers/GlassyPaneContainer'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import { CloudServiceNode } from "./cloud-service-node"
-import { ConfigurationPanel } from "./configuration-panel"
-import { getConnectionSuggestions, validateConnection } from "./connection-validator"
-import { TerraformGenerator } from "./terraform-generator"
-import { UndoRedoControls } from "./undo-redo-controls"
+import { ConfigurationPanel } from "../panels/configuration-panel"
+import { getConnectionSuggestions, validateConnection } from "../utils/connection-validator"
+import { TerraformGenerator } from "../utils/terraform-generator"
+import { UndoRedoControls } from "../features/undo-redo-controls"
 import { useCanvasHistory } from "@/hooks/use-canvas-history"
 import { ProjectCanvasUtils } from "@/lib/project-canvas-utils"
 import { registerCanvasFunctions, unregisterCanvasFunctions } from "@/lib/infrastructure-manager"
-import { AgentChat } from "@/components/agent-chat"
+import { AgentChat } from "@/components/features/agent-chat"
 
-import { AIReviewDialog } from "./ai-review-dialog"
-import { SaveStatusIndicator } from "./save-status-indicator"
-import { ProvidersPane } from "./providers-pane"
+import { AIReviewDialog } from "../dialogs/ai-review-dialog"
+import { SaveStatusIndicator } from "../features/save-status-indicator"
+import { ProvidersPane } from "../panels/providers-pane"
 
 
 const createNodeTypes = (onNodeDoubleClick: (nodeData: any) => void) => ({
@@ -479,12 +479,21 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   }
 
   const handleAIReview = async () => {
+    console.log('🎯 AI Review button clicked!')
+    console.log('Current nodes:', nodes.length)
+    console.log('Current provider:', provider)
+    
     setIsAIReviewOpen(true)
     setIsAIReviewLoading(true)
     setAiReviewError(null)
     setAiAnalysis(null)
 
     try {
+      // Generate fresh terraform files before review
+      console.log('🔄 Generating fresh Terraform files for AI review...')
+      const freshTerraformFiles = await generateTerraformFilesForReview()
+      console.log('✅ Generated files:', Object.keys(freshTerraformFiles))
+      
       // Create an AbortController for timeout
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
@@ -495,7 +504,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          terraformFiles,
+          terraformFiles: freshTerraformFiles,
           provider,
         }),
         signal: controller.signal
@@ -557,7 +566,170 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   }
 
-  // Helper function to generate Terraform files
+  // Helper function to generate Terraform files and return them (for AI review)
+  const generateTerraformFilesForReview = async () => {
+    const mainTf = await generateTerraformCode()
+    
+    // Generate separate files using TerraformGenerator
+    let variablesTf: string = ""
+    let outputsTf: string = ""
+    let providersTf: string = ""
+    
+    if (nodes.length > 0) {
+      try {
+        const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
+        const output = await terraformGenerator.generate()
+        
+        // Generate variables.tf
+        if (Object.keys(output.variables).length > 0) {
+          variablesTf = "# Variables\n"
+          Object.entries(output.variables).forEach(([name, config]) => {
+            variablesTf += `variable "${name}" {\n`
+            Object.entries(config as Record<string, any>).forEach(([key, value]) => {
+              if (key === "type" && value === "string") {
+                variablesTf += `  ${key} = ${value}\n`
+              } else if (typeof value === "string") {
+                variablesTf += `  ${key} = "${value}"\n`
+              } else if (typeof value === "boolean") {
+                variablesTf += `  ${key} = ${value}\n`
+              } else {
+                variablesTf += `  ${key} = ${JSON.stringify(value)}\n`
+              }
+            })
+            variablesTf += "}\n\n"
+          })
+        } else {
+          variablesTf = `# Variables for your infrastructure
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+`
+        }
+        
+        // Generate outputs.tf
+        const terraformOutput = terraformGenerator.generate()
+        if (Object.keys(terraformOutput.outputs).length > 0) {
+          outputsTf = "# Outputs\n"
+          Object.entries(terraformOutput.outputs).forEach(([name, config]) => {
+            outputsTf += `output "${name}" {\n`
+            Object.entries(config as Record<string, any>).forEach(([key, value]) => {
+              if (typeof value === "string") {
+                outputsTf += `  ${key} = "${value}"\n`
+              } else if (typeof value === "boolean") {
+                outputsTf += `  ${key} = ${value}\n`
+              } else {
+                outputsTf += `  ${key} = ${JSON.stringify(value)}\n`
+              }
+            })
+            outputsTf += "}\n\n"
+          })
+        } else {
+          outputsTf = `# Outputs for your infrastructure
+output "resources_created" {
+  description = "Number of resources created"
+  value       = ${nodes.length}
+}
+`
+        }
+        
+        // Generate providers.tf
+        providersTf = terraformGenerator.generateProviderBlock()
+        
+      } catch (error) {
+        console.error('Error generating Terraform files:', error)
+        // Fallback to default content
+        variablesTf = `# Variables for your infrastructure
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+`
+
+        outputsTf = `# Outputs for your infrastructure
+output "resources_created" {
+  description = "Number of resources created"
+  value       = ${nodes.length}
+}
+`
+
+        providersTf = `# Provider configuration
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+`
+      }
+    } else {
+      // Default content when no nodes
+      variablesTf = `# Variables for your infrastructure
+variable "region" {
+  description = "AWS region"
+  type        = string
+  default     = "us-west-2"
+}
+
+variable "environment" {
+  description = "Environment name"
+  type        = string
+  default     = "dev"
+}
+`
+
+      outputsTf = `# Outputs for your infrastructure
+output "resources_created" {
+  description = "Number of resources created"
+  value       = ${nodes.length}
+}
+`
+
+      providersTf = `# Provider configuration
+terraform {
+  required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.0"
+    }
+  }
+}
+
+provider "aws" {
+  region = var.region
+}
+`
+    }
+
+    return {
+      "main.tf": mainTf,
+      "variables.tf": variablesTf,
+      "outputs.tf": outputsTf,
+      "providers.tf": providersTf
+    }
+  }
+
+  // Helper function to generate Terraform files (updates state)
   const generateTerraformFiles = async () => {
     const mainTf = await generateTerraformCode()
     
