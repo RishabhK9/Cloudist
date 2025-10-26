@@ -377,7 +377,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
       // Add assistant response to chat
       setChatMessages(prev => [...prev, {
         role: 'assistant',
-        content: data.response || data.content || 'I apologize, I had trouble processing that request.'
+        content: data.response ?? 'I apologize, I had trouble processing that request.'
       }]);
     } catch (error) {
       console.error('❌ Chat error:', error);
