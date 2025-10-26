@@ -361,8 +361,10 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
     }
 
     // Get credentials for the current provider
-    const provider = currentProject?.provider || 'aws';
-    const credentials = CredentialManager.getCredentials(provider as keyof typeof CredentialManager.prototype);
+    const provider = (currentProject?.provider === 'supabase' || currentProject?.provider === 'hybrid') 
+      ? 'aws' 
+      : (currentProject?.provider || 'aws');
+    const credentials = CredentialManager.getCredentials(provider as 'aws' | 'gcp' | 'azure');
 
     if (!credentials) {
       setDeploymentError(
@@ -463,8 +465,10 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
     }
 
     // Get credentials for the current provider
-    const provider = currentProject?.provider || 'aws';
-    const credentials = CredentialManager.getCredentials(provider as keyof typeof CredentialManager.prototype);
+    const provider = (currentProject?.provider === 'supabase' || currentProject?.provider === 'hybrid') 
+      ? 'aws' 
+      : (currentProject?.provider || 'aws');
+    const credentials = CredentialManager.getCredentials(provider as 'aws' | 'gcp' | 'azure');
 
     if (!credentials) {
       setDeploymentError(
@@ -855,7 +859,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
         <div className="flex-1 flex flex-col">
           <Toolbar
             onSave={handleSave}
-            onGenerateTerraform={handleGenerateTerraform}
+            onGenerateCode={handleGenerateTerraform}
             onPlanOrApply={handlePlanOrApply}
             onUndo={handleUndo}
             onRedo={handleRedo}
@@ -865,7 +869,7 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
             canUndo={historyIndex > 0}
             canRedo={historyIndex < history.length - 1}
             deploymentStage={deploymentStage}
-            isGeneratingTerraform={isGeneratingTerraform}
+            isGeneratingCode={isGeneratingTerraform}
           />
 
           <ReactFlowProvider>

@@ -117,10 +117,6 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   const [awsAccessKey, setAwsAccessKey] = useState("")
   const [awsSecretKey, setAwsSecretKey] = useState("")
   const [awsRegion, setAwsRegion] = useState("us-east-1")
-  
-  // Services state
-  const [services, setServices] = useState<any[]>([])
-  const [servicesLoaded, setServicesLoaded] = useState(false)
   const [supabaseAccessToken, setSupabaseAccessToken] = useState("")
 
   // Load credentials on component mount
@@ -159,18 +155,19 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         })
       }
       
-      // Save Supabase credentials (only access token)
+      // Save Supabase credentials
       if (supabaseAccessToken) {
         await CredentialManager.saveCredentials('supabase', {
           accessToken: supabaseAccessToken
         })
+        
+        // Set environment variable for Supabase access token
+        if (typeof window !== 'undefined') {
+          // Store in localStorage for the current session
+          localStorage.setItem('SUPABASE_ACCESS_TOKEN', supabaseAccessToken)
+          console.log('Supabase access token environment variable set')
+        }
       }
-      
-      // Trigger a storage event to notify other components
-      window.dispatchEvent(new StorageEvent('storage', {
-        key: 'credentials_updated',
-        newValue: 'true'
-      }))
       
       setIsSettingsOpen(false)
       console.log('Credentials saved successfully')
@@ -202,6 +199,41 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   
   // Track if we're syncing from history to prevent conflicts
   const isSyncingFromHistory = useRef(false)
+
+  // Centralized function to delete nodes and edges
+  const deleteNodesAndEdges = useCallback((nodeIdsToDelete: string[], edgeIdsToDelete: string[] = [], actionType: string = 'delete_elements') => {
+    if (nodeIdsToDelete.length === 0 && edgeIdsToDelete.length === 0) {
+      return
+    }
+
+    // Set flag to prevent history sync from overwriting this change
+    isSyncingFromHistory.current = true
+    
+    // Use functional updates to get the latest state
+    setNodes((latestNodes) => {
+      const filteredNodes = latestNodes.filter((node) => !nodeIdsToDelete.includes(node.id))
+      
+      setEdges((latestEdges) => {
+        const filteredEdges = latestEdges.filter((edge) => 
+          !edgeIdsToDelete.includes(edge.id) && 
+          !nodeIdsToDelete.includes(edge.source) && 
+          !nodeIdsToDelete.includes(edge.target)
+        )
+        
+        // Save state with the updated state
+        saveState(filteredNodes, filteredEdges, actionType)
+        
+        // Reset flag after state updates
+        setTimeout(() => {
+          isSyncingFromHistory.current = false
+        }, 50)
+        
+        return filteredEdges
+      })
+      
+      return filteredNodes
+    })
+  }, [saveState])
 
   // Load saved state when project opens
   useEffect(() => {
@@ -241,31 +273,14 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
           data: {
             ...node.data,
             onDelete: () => {
-              // Remove the node and any connected edges
-              const updatedNodes = currentNodes.filter(n => n.id !== nodeId)
-              const updatedEdges = edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
-              
-              // Set flag to prevent history sync from overwriting this change
-              isSyncingFromHistory.current = true
-              
-              // Update state
-              setNodes(updatedNodes)
-              setEdges(updatedEdges)
-              
-              // Save state with the complete new state
-              saveState(updatedNodes, updatedEdges, 'delete_node')
-              
-              // Reset flag after a short delay to allow state updates to complete
-              setTimeout(() => {
-                isSyncingFromHistory.current = false
-              }, 50)
+              deleteNodesAndEdges([nodeId], [], 'delete_node')
             }
           }
         }
       })]
       return updatedNodes
     })
-  }, [edges, saveState])
+  }, [deleteNodesAndEdges])
 
   const addEdgesToCanvas = useCallback((newEdges: Edge[]) => {
     setEdges((currentEdges) => {
@@ -411,31 +426,13 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         position,
         data: {
           ...service,
+          type: service.id, // Ensure the type field is set correctly
           provider: getProviderFromServiceId(service.id),
           config: service.defaultConfig || {},
           terraformType: service.terraformType,
           onDelete: () => {
             console.log('onDelete called for node:', nodeId);
-            // Remove the node and any connected edges
-            const updatedNodes = nodes.filter(node => node.id !== nodeId)
-            const updatedEdges = edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
-            
-            console.log('Filtered nodes:', updatedNodes.length, 'Filtered edges:', updatedEdges.length);
-            
-            // Set flag to prevent history sync from overwriting this change
-            isSyncingFromHistory.current = true
-            
-            // Update state
-            setNodes(updatedNodes)
-            setEdges(updatedEdges)
-            
-            // Save state with the complete new state
-            saveState(updatedNodes, updatedEdges, 'delete_node')
-            
-            // Reset flag after a short delay to allow state updates to complete
-            setTimeout(() => {
-              isSyncingFromHistory.current = false
-            }, 50)
+            deleteNodesAndEdges([nodeId], [], 'delete_node')
           }
         },
       }
@@ -457,7 +454,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         isSyncingFromHistory.current = false
       }, 50)
     },
-    [reactFlowInstance, nodes, edges, provider, saveState],
+    [reactFlowInstance, nodes, edges, provider, deleteNodesAndEdges],
   )
 
   const onDragStart = (event: DragEvent, service: any) => {
@@ -471,43 +468,12 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   }
 
   const deleteSelectedElements = useCallback(() => {
-    let updatedNodes = nodes
-    let updatedEdges = edges
-    let hasChanges = false
-    
-    if (selectedNodes.length > 0) {
-      updatedNodes = nodes.filter((node) => !selectedNodes.includes(node.id))
-      hasChanges = true
+    if (selectedNodes.length > 0 || selectedEdges.length > 0) {
+      deleteNodesAndEdges(selectedNodes, selectedEdges, 'delete_elements')
       setSelectedNodes([])
-    }
-    
-    if (selectedEdges.length > 0) {
-      updatedEdges = edges.filter((edge) => !selectedEdges.includes(edge.id))
-      hasChanges = true
       setSelectedEdges([])
     }
-    
-    if (hasChanges) {
-      // Set flag to prevent history sync from overwriting this change
-      isSyncingFromHistory.current = true
-      
-      // Apply the changes
-      if (selectedNodes.length > 0) {
-        setNodes(updatedNodes)
-      }
-      if (selectedEdges.length > 0) {
-        setEdges(updatedEdges)
-      }
-      
-      // Save state with complete updated state
-      saveState(updatedNodes, updatedEdges, 'delete_elements')
-      
-      // Reset flag after a short delay to allow state updates to complete
-      setTimeout(() => {
-        isSyncingFromHistory.current = false
-      }, 50)
-    }
-  }, [selectedNodes, selectedEdges, nodes, edges, saveState])
+  }, [selectedNodes, selectedEdges, deleteNodesAndEdges])
 
   const handleSelectionChange = useCallback(({ nodes: selectedNodesArray, edges: selectedEdgesArray }: { nodes: any[], edges: any[] }) => {
     setSelectedNodes(selectedNodesArray.map(node => node.id))
@@ -557,7 +523,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     try {
       // Generate fresh terraform files before review
-      const freshTerraformFiles = generateTerraformFilesForReview()
+      const freshTerraformFiles = generateFilesForReview()
       
       // Create an AbortController for timeout
       const controller = new AbortController()
@@ -595,8 +561,8 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
     }
   }
 
-  // Generate Terraform code from nodes
-  const generateTerraformCode = () => {
+  // Generate code from nodes
+  const generateCode = () => {
     if (nodes.length === 0) {
       return `# No resources defined yet
 # Drag and drop services from the sidebar to generate Terraform code`
@@ -634,8 +600,8 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   }
 
   // Helper function to generate Terraform files and return them (for AI review)
-  const generateTerraformFilesForReview = () => {
-    const mainTf = generateTerraformCode()
+  const generateFilesForReview = () => {
+    const mainTf = generateCode()
     
     // Generate separate files using TerraformGenerator
     let variablesTf: string = ""
@@ -796,10 +762,10 @@ provider "aws" {
     }
   }
 
-  // Helper function to generate Terraform files (updates state)
-  const generateTerraformFiles = () => {
+  // Helper function to generate files (updates state)
+  const generateFiles = () => {
     // Use the combined format for main.tf (your preferred format)
-    const mainTf = generateTerraformCode()
+    const mainTf = generateCode()
     
     // For the other files, we'll keep them minimal since everything is in main.tf
     let variablesTf = "# Variables are defined in main.tf"
@@ -987,58 +953,23 @@ provider "aws" {
       return
     }
 
-    // Check for Supabase nodes
-    const hasSupabaseNodes = nodes.some(node => 
-      node.data?.provider === 'supabase' || 
-      (typeof node.data?.type === 'string' && node.data.type.includes('supabase'))
-    )
-    
-    const hasCloudProviderNodes = nodes.some(node => 
-      node.data?.provider === 'aws' || 
-      node.data?.provider === 'gcp' || 
-      node.data?.provider === 'azure'
-    )
-
-    // Determine deployment type and check credentials
-    let deploymentProvider: 'aws' | 'gcp' | 'azure' | 'supabase' | 'hybrid' = provider as any
-    
-    if (hasSupabaseNodes && !hasCloudProviderNodes) {
-      // Supabase-only deployment
-      deploymentProvider = 'supabase'
-      if (!CredentialManager.hasCredentials('supabase')) {
-        setDeploymentError("Supabase credentials required for Supabase services. Please configure your Supabase access token in settings.")
-        return
-      }
-    } else if (hasSupabaseNodes && hasCloudProviderNodes) {
-      // Hybrid deployment
-      deploymentProvider = 'hybrid'
-      if (!CredentialManager.hasCredentials('supabase')) {
-        setDeploymentError("Supabase credentials required for hybrid deployment. Please configure your Supabase access token in settings.")
-        return
-      }
-      if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
-        setDeploymentError(`No ${provider.toUpperCase()} credentials configured for hybrid deployment. Please configure credentials in settings.`)
-        return
-      }
-    } else {
-      // Cloud-only deployment
-      if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
-        setDeploymentError(`No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`)
-        return
-      }
+    // Check if credentials are configured
+    if (!CredentialManager.hasCredentials(provider as 'aws' | 'gcp' | 'azure')) {
+      setDeploymentError(`No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`)
+      return
     }
 
-    // Reset progress UI when starting a new deployment
-    setFakeProgress(0)
-    setIsProgressVisible(true)
-    setDeploymentError(null)
-    setDeploymentStatus(null)
-    setIsDeploying(true)
+  // Reset progress UI when starting a new deployment
+  setFakeProgress(0)
+  setIsProgressVisible(true)
+  setDeploymentError(null)
+  setDeploymentStatus(null)
+  setIsDeploying(true)
 
     try {
       const deploymentRequest = {
         name: `Infrastructure Deployment ${new Date().toLocaleString()}`,
-        provider: deploymentProvider,
+        provider: provider as 'aws' | 'gcp' | 'azure',
         nodes: nodes,
         edges: edges,
         autoApprove: false
@@ -1135,7 +1066,7 @@ provider "aws" {
 
   // Update all Terraform files when nodes change
   const updateAllTerraformFiles = () => {
-    generateTerraformFiles()
+    generateFiles()
   }
 
   // Update main.tf when nodes change (kept for backward compatibility)
@@ -1145,7 +1076,7 @@ provider "aws" {
 
   // Initialize files on component mount
   useEffect(() => {
-    generateTerraformFiles()
+    generateFiles()
   }, [])
 
   // Update main.tf when nodes or edges change
@@ -1225,13 +1156,8 @@ provider "aws" {
     <div className="h-screen bg-background flex flex-col">
       {/* Top Header with Back Button and Toolbar */}
       <div className="flex flex-col">
-        <div className="h-12 border-b border-gray-200 bg-white flex items-center px-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="text-gray-600 hover:text-gray-900"
-          >
+        <div className="h-12 border-b border-border bg-background flex items-center justify-between px-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
@@ -1310,6 +1236,8 @@ provider "aws" {
                     <h3 className="text-lg font-semibold">Supabase Configuration</h3>
                   </div>
                   
+          
+                  
                   <div className="space-y-2">
                     <Label htmlFor="supabase-access-token">Access Token</Label>
                     <Input
@@ -1317,11 +1245,8 @@ provider "aws" {
                       type="password"
                       value={supabaseAccessToken}
                       onChange={(e) => setSupabaseAccessToken(e.target.value)}
-                      placeholder="sbp_..."
+                      placeholder="Enter your Supabase access token"
                     />
-                    <p className="text-xs text-gray-500">
-                      Get your access token from <a href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Supabase Dashboard</a>
-                    </p>
                   </div>
                 </div>
               </div>
@@ -1339,8 +1264,10 @@ provider "aws" {
         </div>
         <Toolbar
           onSave={saveCurrentState}
-          onGenerateTerraform={async () => {
-            await generateTerraformFiles();
+          onGenerateCode={() => {
+            if (!isDeploying) {
+              handleDeploy()
+            }
           }}
           onPlanOrApply={handleDeploy}
           onUndo={undo}
@@ -1349,94 +1276,32 @@ provider "aws" {
           canUndo={canUndo}
           canRedo={canRedo}
           deploymentStage={isDeploying ? "applying" : "none"}
-          isGeneratingTerraform={false}
+          isGeneratingCode={false}
         />
-      </div>
-
-      <div className="flex-1 flex">
-        {/* Left Sidebar */}
-        <aside className="w-80 border-r border-gray-200 bg-white overflow-y-auto">
-          <div className="p-4 space-y-4">
-            {/* Cloud Services */}
-            <div>
-              <div className="flex items-center justify-between mb-2">
-                <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">
-                    Cloud Services
-                  </span>
-                </div>
-              </div>
-              <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
-                {!servicesLoaded ? (
-                  <div className="col-span-3 flex items-center justify-center p-4">
-                    <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                    <span className="ml-2 text-sm text-gray-600">
-                      Loading services...
-                    </span>
-                  </div>
-                ) : services.length === 0 ? (
-                  <div className="col-span-3 flex items-center justify-center p-4">
-                    <span className="text-sm text-gray-600">
-                      No services available
-                    </span>
-                  </div>
-                ) : (
-                  services.map((service) => (
-                    <div
-                      key={service.id}
-                      className="flex flex-col items-center p-2 hover:bg-purple-50 rounded cursor-grab active:cursor-grabbing border border-gray-200 hover:border-purple-200 transition-colors"
-                      draggable
-                      onDragStart={(event) => onDragStart(event, service)}
-                    >
-                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-1">
-                        {service.icon.startsWith("/") ? (
-                          <img
-                            src={service.icon}
-                            alt={service.name}
-                            className="w-6 h-6"
-                          />
-                        ) : (
-                          <span className="text-lg">{service.icon}</span>
-                        )}
-                      </div>
-                      <span className="text-xs text-gray-700 text-center leading-tight">
-                        {service.name}
-                      </span>
-                    </div>
-                  ))
-                )}
-              </div>
-            </div>
-
-            {/* Node and edge summary */}
-            <div className="mt-auto pt-4 border-t border-gray-200">
-              <div className="text-xs text-gray-500 mb-2">
-                Number of nodes: {nodes.length}
-              </div>
-              <div className="text-xs text-gray-500 mb-2">
-                Number of edges: {edges.length}
-              </div>
-              {(selectedNodes.length > 0 || selectedEdges.length > 0) && (
-                <div className="mb-2">
-                  <div className="text-xs text-red-600 mb-1">
-                    Selected: {selectedNodes.length} node
-                    {selectedNodes.length !== 1 ? "s" : ""},{" "}
-                    {selectedEdges.length} edge
-                    {selectedEdges.length !== 1 ? "s" : ""}
-                  </div>
-                  <Button
-                    onClick={deleteSelectedElements}
-                    size="sm"
-                    variant="destructive"
-                    className="w-full text-xs"
-                  >
-                    Delete Selected
-                  </Button>
-                </div>
-              )}
+        
+        {/* Save Status Indicator */}
+        {isSaving && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-card border border-border rounded-lg px-4 py-3 shadow-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-4 h-4 border-2 border-primary border-t-transparent rounded-full animate-spin"></div>
+              <span className="text-card-foreground">Saving...</span>
             </div>
           </div>
-        </aside>
+        )}
+        
+        {lastSaved && !isSaving && (
+          <div className="fixed bottom-6 left-1/2 transform -translate-x-1/2 z-50 bg-card border border-border rounded-lg px-4 py-3 shadow-lg">
+            <div className="flex items-center gap-2 text-sm">
+              <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+              <span className="text-card-foreground">Saved</span>
+            </div>
+          </div>
+        )}
+      </div>
+
+       <div className="flex-1 flex">
+         {/* Component Palette - Left Sidebar */}
+         <ComponentPalette onAddBlock={() => {}} />
 
         {/* Central Canvas */}
         <main className="flex-1 flex flex-col">
@@ -1458,7 +1323,7 @@ provider "aws" {
                   onSelectionChange={handleSelectionChange}
                   nodeTypes={createNodeTypes(handleNodeDoubleClick)}
                   edgeTypes={edgeTypes}
-                  className="bg-gray-50"
+                  className="bg-background"
                   proOptions={{ hideAttribution: true }}
                   connectionLineStyle={{
                     stroke: "#a855f7",
@@ -1492,7 +1357,7 @@ provider "aws" {
                     gap={20}
                     size={2}
                     color="#9ca3af"
-                    style={{ backgroundColor: "#f9fafb" }}
+                    style={{ backgroundColor: "#3d3d3d" }}
                   />
                 </ReactFlow>
               </ReactFlowProvider>
@@ -1512,7 +1377,7 @@ provider "aws" {
           />
         ) : (
           <aside
-            className="border-l border-gray-200 bg-gray-50 text-gray-900 flex flex-col relative h-full"
+            className="border-l border-border bg-card text-card-foreground flex flex-col relative h-full"
             style={{ width: `${rightPanelWidth}px` }}
           >
             {/* Resize Handle */}
@@ -1538,28 +1403,28 @@ provider "aws" {
                     <SelectTrigger className="w-44 bg-background border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-100 border-gray-300">
+                    <SelectContent className="bg-background border-border">
                       <SelectItem
                         value="main.tf"
-                        className="text-gray-900 hover:bg-gray-200"
+                        className="text-foreground hover:bg-accent"
                       >
                         main.tf
                       </SelectItem>
                       <SelectItem
                         value="variables.tf"
-                        className="text-gray-900 hover:bg-gray-200"
+                        className="text-foreground hover:bg-accent"
                       >
                         variables.tf
                       </SelectItem>
                       <SelectItem
                         value="outputs.tf"
-                        className="text-gray-900 hover:bg-gray-200"
+                        className="text-foreground hover:bg-accent"
                       >
                         outputs.tf
                       </SelectItem>
                       <SelectItem
                         value="providers.tf"
-                        className="text-gray-900 hover:bg-gray-200"
+                        className="text-foreground hover:bg-accent"
                       >
                         providers.tf
                       </SelectItem>
@@ -1571,25 +1436,16 @@ provider "aws" {
                     onClick={() => handleDownloadTerraformCode(activeFile)}
                     variant="ghost"
                     size="sm"
-                    className="text-gray-600 hover:text-gray-900"
+                    className="text-muted-foreground hover:text-foreground"
                   >
                     <Download className="w-4 h-4" />
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-600 hover:text-gray-900"
-                    onClick={handleDeploy}
-                    disabled={isDeploying}
-                  >
-                    <Play className="w-4 h-4" />
                   </Button>
                 </div>
               </div>
 
               {/* Code Content */}
               <div
-                className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col"
+                className="flex-1 overflow-auto p-4 bg-card flex flex-col"
                 style={{ minHeight: 0 }}
               >
                 {/* Deployment Status */}
@@ -1610,12 +1466,12 @@ provider "aws" {
                             ×
                           </button>
                         </div>
-                        <div className="text-xs text-gray-600 mb-1">
+                        <div className="text-xs text-muted-foreground mb-1">
                           Deployment progress
                         </div>
-                        <div className="w-full bg-gray-200 rounded-full h-2">
+                        <div className="w-full bg-muted rounded-full h-2">
                           <div
-                            className="bg-blue-600 h-2 rounded-full transition-all duration-700"
+                            className="bg-primary h-2 rounded-full transition-all duration-700"
                             style={{
                               width: `${Math.min(
                                 100,
@@ -1624,31 +1480,31 @@ provider "aws" {
                             }}
                           />
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
+                        <div className="text-xs text-muted-foreground mt-1">
                           {Math.round(fakeProgress)}%
                         </div>
                       </div>
                     )}
 
-                    <div className="p-3 bg-white rounded-lg border">
+                    <div className="p-3 bg-background rounded-lg border border-border">
                       {isDeploying && deploymentStatus && (
                         <div className="space-y-2">
                           <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-900">
+                            <span className="text-sm font-medium text-foreground">
                               {deploymentStatus.message}
                             </span>
-                            <span className="text-xs text-gray-500">
+                            <span className="text-xs text-muted-foreground">
                               {deploymentStatus.progress}%
                             </span>
                           </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div className="w-full bg-muted rounded-full h-2">
                             <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                              className="bg-primary h-2 rounded-full transition-all duration-300"
                               style={{ width: `${deploymentStatus.progress}%` }}
                             ></div>
                           </div>
                           {deploymentStatus.logs.length > 0 && (
-                            <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-20 overflow-y-auto">
+                            <div className="text-xs text-muted-foreground bg-muted p-2 rounded max-h-20 overflow-y-auto">
                               {deploymentStatus.logs
                                 .slice(-3)
                                 .map((log, index) => (
@@ -1662,7 +1518,7 @@ provider "aws" {
                       )}
 
                       {deploymentError && (
-                        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                        <div className="text-sm text-destructive-foreground bg-destructive/10 p-2 rounded">
                           <div className="font-medium">Deployment Error:</div>
                           <div>{deploymentError}</div>
                         </div>
