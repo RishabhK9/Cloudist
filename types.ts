@@ -10,7 +10,6 @@ export interface CloudServiceNodeData extends Record<string, unknown> {
   provider: string
   config?: Record<string, any>
   terraformType?: string
-  onDelete?: () => void
 }
 
 export interface CloudServiceNodeProps {
@@ -68,7 +67,7 @@ export interface ConfigurationPanelProps {
 }
 
 // Infrastructure Canvas Types
-export type CloudProvider = "aws" | "gcp" | "azure" | "supabase"
+export type CloudProvider = "aws" | "gcp" | "azure"
 
 export interface InfrastructureCanvasProps {
   provider: CloudProvider

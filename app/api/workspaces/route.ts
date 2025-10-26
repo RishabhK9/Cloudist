@@ -1,4 +1,4 @@
-import { TerraformGenerator } from '@/components/utils/terraform-generator'
+import { TerraformGenerator } from '@/components/terraform-generator'
 import type { Edge, Node } from '@xyflow/react'
 import { promises as fs } from 'fs'
 import { NextRequest, NextResponse } from 'next/server'
