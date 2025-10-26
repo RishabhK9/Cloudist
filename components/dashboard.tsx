@@ -282,7 +282,7 @@ export function Dashboard() {
           <div className="flex items-center gap-2">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
               <Image
-                src="/aws/icon.png"
+                src="/logo/image.png"
                 alt="Cloudist Logo"
                 width={48}
                 height={48}
