@@ -1,7 +1,7 @@
 "use client"
 
-import { CreateProjectDialog } from "@/components/dialogs/create-project-dialog"
-import { ProjectView } from "@/components/layout/project-view"
+import { CreateProjectDialog } from "@/components/create-project-dialog"
+import { ProjectView } from "@/components/project-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -282,7 +282,7 @@ export function Dashboard() {
           <div className="flex items-center gap-2">
             <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center overflow-hidden">
               <Image
-                src="/logo/image.png"
+                src="/aws/icon.png"
                 alt="Cloudist Logo"
                 width={48}
                 height={48}
@@ -307,7 +307,7 @@ export function Dashboard() {
                   handleTabChange(item.id)
                 }}
                 className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative z-20 cursor-pointer select-none",
+                  "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm font-medium transition-all duration-200 focus:outline-none focus:ring-2 focus:ring-purple-500 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed relative z-20 cursor-pointer select-none",
                   activeTab === item.id
                     ? "bg-primary/10 text-primary shadow-sm ring-1 ring-primary/20"
                     : "text-muted-foreground hover:text-foreground hover:bg-accent active:bg-accent",
@@ -460,8 +460,8 @@ export function Dashboard() {
                             <span className="font-medium text-foreground">{project.architectures}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
-                            {/* <span className="text-muted-foreground">Last modified</span>
-                            <span className="font-medium text-foreground">{project.lastModified}</span> */}
+                            {/* <span className="text-gray-600">Last modified</span>
+                            <span className="font-medium text-gray-900">{project.lastModified}</span> */}
                           </div>
                           {project.provider && (
                             <div className="flex items-center justify-between text-sm">
@@ -552,7 +552,7 @@ export function Dashboard() {
                     
                     {/* Error messages */}
                     {credentialErrors.aws && credentialErrors.aws.length > 0 && (
-                      <div className="text-sm text-destructive">
+                      <div className="text-sm text-red-600">
                         {credentialErrors.aws.map((error, index) => (
                           <div key={index}>• {error}</div>
                         ))}
