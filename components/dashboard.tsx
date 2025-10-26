@@ -44,8 +44,8 @@ interface Project {
   id: string
   name: string
   description?: string
-  provider?: "aws" | "gcp" | "azure"
-  architectures: number
+  provider?: "aws" | "gcp" | "azure" | "supabase"
+  components: number
   lastModified: string
   status: "active" | "archived"
   createdAt: string
@@ -57,7 +57,11 @@ interface Project {
   }
 }
 
-export function Dashboard() {
+interface DashboardProps {
+  onProjectSelect?: (projectId: string) => void
+}
+
+export function Dashboard({ onProjectSelect }: DashboardProps) {
   const [projects, setProjects] = useState<Project[]>([])
   const [selectedProject, setSelectedProject] = useState<Project | null>(null)
   const [activeTab, setActiveTab] = useState<string>("home")
@@ -86,7 +90,11 @@ export function Dashboard() {
   )
 
   const handleProjectSelect = (project: Project) => {
-    setSelectedProject(project)
+    if (onProjectSelect) {
+      onProjectSelect(project.id)
+    } else {
+      setSelectedProject(project)
+    }
   }
 
   const handleBackToDashboard = () => {
@@ -106,7 +114,7 @@ export function Dashboard() {
       name: `${project.name} (Copy)`,
       createdAt: new Date().toISOString().split("T")[0],
       lastModified: "Just now",
-      architectures: 0,
+      components: 0,
     }
     setProjects([newProject, ...projects])
   }
@@ -456,8 +464,8 @@ export function Dashboard() {
                       <CardContent>
                         <div className="space-y-3">
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-muted-foreground">Architectures</span>
-                            <span className="font-medium text-foreground">{project.architectures}</span>
+                            <span className="text-muted-foreground">Components</span>
+                            <span className="font-medium text-foreground">{project.components}</span>
                           </div>
                           <div className="flex items-center justify-between text-sm">
                             {/* <span className="text-gray-600">Last modified</span>
@@ -485,7 +493,7 @@ export function Dashboard() {
             <div className="space-y-6 max-w-4xl">
               <div className="space-y-4">
                 <h2 className="text-lg font-semibold text-foreground">Cloud Provider Credentials</h2>
-                <p className="text-sm text-muted-foreground">Configure your cloud provider credentials to deploy architectures.</p>
+                <p className="text-sm text-muted-foreground">Configure your cloud provider credentials to deploy components.</p>
               </div>
 
               <div className="space-y-4">

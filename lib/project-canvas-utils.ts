@@ -5,7 +5,7 @@ export interface Project {
   name: string
   description?: string
   provider?: "aws" | "gcp" | "azure"
-  architectures: number
+  components: number
   lastModified: string
   status: "active" | "archived"
   createdAt: string
@@ -42,7 +42,7 @@ export class ProjectCanvasUtils {
         ...projects[projectIndex],
         canvasState,
         lastModified: "Just now",
-        architectures: nodes.length
+        components: nodes.length
       }
 
       localStorage.setItem(this.STORAGE_KEY, JSON.stringify(projects))

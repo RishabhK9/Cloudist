@@ -149,7 +149,7 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
             Settings
           </DialogTitle>
           <DialogDescription>
-            Configure your cloud provider credentials to deploy architectures.
+            Configure your cloud provider credentials to deploy components.
           </DialogDescription>
         </DialogHeader>
 

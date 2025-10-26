@@ -22,7 +22,7 @@ interface Project {
   name: string
   description?: string
   provider?: "aws" | "gcp" | "azure"
-  architectures: number
+  components: number
   lastModified: string
   status: "active" | "archived"
   createdAt: string
@@ -52,7 +52,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
     const newProject = {
       name: name.trim(),
       description: description.trim() || undefined,
-      architectures: 0,
+      components: 0,
       status: "active" as const,
     }
 
