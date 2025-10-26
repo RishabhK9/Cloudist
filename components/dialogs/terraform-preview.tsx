@@ -19,53 +19,171 @@ export function TerraformPreviewDialog({
   const [copied, setCopied] = useState(false)
   const [selectedFile, setSelectedFile] = useState<string>('main.tf')
 
-  // Reset to main.tf when dialog opens
-  useEffect(() => {
-    if (open) {
-      setSelectedFile('main.tf')
-      setCopied(false)
-    }
-  }, [open])
-
   const splitIntoFiles = () => {
     if (!terraformCode) return {}
     
-    const files: Record<string, string> = {
-      'main.tf': ''
-    }
+    const files: Record<string, string> = {}
     
+    // Check if code uses file markers (# === filename.tf ===)
+    const fileMarkerRegex = /^#\s*===\s*([a-z0-9-]+\.tf)\s*===\s*$/i
     const lines = terraformCode.split('\n')
+    
     let currentFile = 'main.tf'
     let buffer: string[] = []
+    let hasFileMarkers = false
     
-    for (const line of lines) {
-      // Check if this line should go into a different file
-      if (line.includes('provider "')) {
-        if (buffer.length > 0 && currentFile !== 'provider.tf') {
-          files[currentFile] = buffer.join('\n')
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+      
+      // Check for file marker
+      const markerMatch = trimmed.match(fileMarkerRegex)
+      if (markerMatch) {
+        hasFileMarkers = true
+        // Save previous buffer
+        if (buffer.length > 0) {
+          const content = buffer.join('\n').trim()
+          if (content) {
+            files[currentFile] = (files[currentFile] || '') + content + '\n\n'
+          }
+          buffer = []
         }
-        currentFile = 'provider.tf'
-        buffer = [line]
-      } else if (line.includes('variable "')) {
-        if (buffer.length > 0 && currentFile !== 'variables.tf') {
-          files[currentFile] = buffer.join('\n')
-        }
-        currentFile = 'variables.tf'
-        buffer = [line]
-      } else if (line.includes('output "')) {
-        if (buffer.length > 0 && currentFile !== 'outputs.tf') {
-          files[currentFile] = buffer.join('\n')
-        }
-        currentFile = 'outputs.tf'
-        buffer = [line]
-      } else {
-        buffer.push(line)
+        // Switch to new file (don't include the marker line itself)
+        currentFile = markerMatch[1]
+        continue
       }
+      
+      buffer.push(line)
     }
     
     // Add remaining buffer
     if (buffer.length > 0) {
-      files[currentFile] = buffer.join('\n')
+      const content = buffer.join('\n').trim()
+      if (content) {
+        files[currentFile] = (files[currentFile] || '') + content
+      }
+    }
+    
+    // If no file markers were found, fall back to block-based parsing
+    if (!hasFileMarkers) {
+      return splitIntoFilesByBlockType()
+    }
+    
+    // Clean up empty files and trim whitespace
+    Object.keys(files).forEach(key => {
+      files[key] = files[key].trim()
+      if (!files[key] || files[key].length === 0) {
+        delete files[key]
+      }
+    })
+    
+    // If no files were created, put everything in main.tf
+    if (Object.keys(files).length === 0 && terraformCode) {
+      files['main.tf'] = terraformCode
+    }
+    
+    return files
+  }
+
+  // Fallback method: split by block type if no file markers
+  const splitIntoFilesByBlockType = () => {
+    if (!terraformCode) return {}
+    
+    const files: Record<string, string> = {}
+    const lines = terraformCode.split('\n')
+    let currentFile = ''
+    let buffer: string[] = []
+    let inBlock = false
+    let blockDepth = 0
+    
+    // First pass: detect terraform block
+    let hasTerraformBlock = false
+    for (const line of lines) {
+      if (line.trim().startsWith('terraform {')) {
+        hasTerraformBlock = true
+        break
+      }
+    }
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i]
+      const trimmed = line.trim()
+      
+      // Track block depth
+      const openBraces = (line.match(/{/g) || []).length
+      const closeBraces = (line.match(/}/g) || []).length
+      blockDepth += openBraces - closeBraces
+      
+      // Determine file based on block type (only when not inside a block)
+      if (blockDepth === 0 && !inBlock) {
+        let newFile = ''
+        
+        if (trimmed.startsWith('terraform {')) {
+          newFile = 'terraform.tf'
+          inBlock = true
+        } else if (trimmed.startsWith('provider ')) {
+          newFile = 'provider.tf'
+          inBlock = true
+        } else if (trimmed.startsWith('variable "')) {
+          newFile = 'variables.tf'
+          inBlock = true
+        } else if (trimmed.startsWith('output "')) {
+          newFile = 'outputs.tf'
+          inBlock = true
+        } else if (trimmed.startsWith('data "')) {
+          newFile = 'data.tf'
+          inBlock = true
+        } else if (trimmed.startsWith('locals {')) {
+          newFile = 'locals.tf'
+          inBlock = true
+        } else if (trimmed.startsWith('resource "')) {
+          newFile = 'main.tf'
+          inBlock = true
+        }
+        
+        // If we're switching files, save the buffer
+        if (newFile && newFile !== currentFile) {
+          if (buffer.length > 0 && currentFile) {
+            const content = buffer.join('\n').trim()
+            if (content) {
+              files[currentFile] = (files[currentFile] || '') + content + '\n\n'
+            }
+          }
+          buffer = []
+          currentFile = newFile
+        }
+      }
+      
+      // Add line to buffer if we have a current file
+      if (currentFile) {
+        buffer.push(line)
+      }
+      
+      // Check if block ended
+      if (blockDepth === 0 && inBlock) {
+        inBlock = false
+      }
+    }
+    
+    // Add remaining buffer
+    if (buffer.length > 0 && currentFile) {
+      const content = buffer.join('\n').trim()
+      if (content) {
+        files[currentFile] = (files[currentFile] || '') + content
+      }
+    }
+    
+    // Clean up empty files and trim whitespace
+    Object.keys(files).forEach(key => {
+      files[key] = files[key].trim()
+      if (!files[key] || files[key].length === 0) {
+        delete files[key]
+      }
+    })
+    
+    // If no files were created, put everything in main.tf
+    if (Object.keys(files).length === 0 && terraformCode) {
+      files['main.tf'] = terraformCode
     }
     
     return files
@@ -75,6 +193,28 @@ export function TerraformPreviewDialog({
     const files = splitIntoFiles()
     return files[selectedFile] || terraformCode || ''
   }
+
+  // Reset to first available file when dialog opens
+  useEffect(() => {
+    if (open && terraformCode) {
+      const files = Object.keys(splitIntoFiles())
+      if (files.length > 0) {
+        // Prefer these files in order when opening dialog
+        const preferredOrder = [
+          'terraform.tf',
+          'versions.tf', 
+          'provider.tf',
+          'main.tf',
+          'variables.tf',
+          'data.tf',
+          'outputs.tf'
+        ]
+        const firstFile = preferredOrder.find(f => files.includes(f)) || files[0]
+        setSelectedFile(firstFile)
+      }
+      setCopied(false)
+    }
+  }, [open, terraformCode])
 
   const handleCopy = () => {
     const currentCode = getCurrentFileContent()
@@ -110,17 +250,60 @@ export function TerraformPreviewDialog({
     
     const splitFiles = splitIntoFiles()
     const fileDescriptions: Record<string, string> = {
-      'main.tf': 'Main infrastructure configuration',
-      'variables.tf': 'Input variables',
-      'outputs.tf': 'Output values',
-      'provider.tf': 'Provider configuration'
+      'terraform.tf': 'Terraform & provider versions',
+      'provider.tf': 'Provider configuration',
+      'main.tf': 'Main infrastructure resources',
+      'variables.tf': 'Input variables & defaults',
+      'outputs.tf': 'Output values & exports',
+      'data.tf': 'Data sources & lookups',
+      'locals.tf': 'Local values & calculations',
+      'network.tf': 'Network & VPC resources',
+      'security.tf': 'Security groups & IAM',
+      'compute.tf': 'EC2, Lambda, ECS resources',
+      'storage.tf': 'S3, EBS, EFS resources',
+      'database.tf': 'RDS, DynamoDB resources',
+      'monitoring.tf': 'CloudWatch & monitoring',
+      'dns.tf': 'Route53 & DNS resources',
+      'loadbalancer.tf': 'ALB, NLB, ELB resources',
+      'kubernetes.tf': 'EKS & K8s resources',
+      'backend.tf': 'Terraform backend config',
+      'versions.tf': 'Version constraints',
     }
     
     return Object.keys(splitFiles)
       .filter(fileName => splitFiles[fileName]?.trim())
+      .sort((a, b) => {
+        // Sort files in a logical order for Terraform projects
+        const order = [
+          'terraform.tf',
+          'versions.tf',
+          'provider.tf',
+          'backend.tf',
+          'variables.tf',
+          'locals.tf',
+          'data.tf',
+          'main.tf',
+          'network.tf',
+          'security.tf',
+          'compute.tf',
+          'storage.tf',
+          'database.tf',
+          'loadbalancer.tf',
+          'dns.tf',
+          'monitoring.tf',
+          'kubernetes.tf',
+          'outputs.tf'
+        ]
+        const aIndex = order.indexOf(a)
+        const bIndex = order.indexOf(b)
+        if (aIndex !== -1 && bIndex !== -1) return aIndex - bIndex
+        if (aIndex !== -1) return -1
+        if (bIndex !== -1) return 1
+        return a.localeCompare(b)
+      })
       .map(fileName => ({
         name: fileName,
-        description: fileDescriptions[fileName] || 'Configuration file',
+        description: fileDescriptions[fileName] || 'Terraform configuration file',
         content: splitFiles[fileName]
       }))
   }
@@ -131,14 +314,26 @@ export function TerraformPreviewDialog({
       let className = "font-mono text-sm"
       
       // Syntax highlighting for Terraform
-      if (line.trim().startsWith('#')) {
+      const trimmed = line.trim()
+      
+      if (trimmed.startsWith('#')) {
+        // Comments (including file markers)
         className += " text-gray-500 dark:text-gray-400 italic"
-      } else if (line.includes('resource "') || line.includes('provider "') || line.includes('variable "') || line.includes('output "')) {
+      } else if (trimmed.match(/^(terraform|provider|resource|data|variable|output|locals|module)\s*["{]/)) {
+        // Block declarations
         className += " text-purple-600 dark:text-purple-400 font-semibold"
-      } else if (line.trim().match(/^[a-z_]+\s*=/)) {
+      } else if (trimmed.match(/^[a-z_][a-z0-9_]*\s*=/)) {
+        // Attribute assignments
         className += " text-blue-600 dark:text-blue-400"
-      } else if (line.includes('"') && !line.trim().startsWith('#')) {
+      } else if (trimmed.match(/^(required_providers|required_version|source|version|backend|depends_on|count|for_each)\s/)) {
+        // Special keywords
+        className += " text-orange-600 dark:text-orange-400 font-medium"
+      } else if (line.includes('"') && !trimmed.startsWith('#')) {
+        // Strings
         className += " text-green-600 dark:text-green-400"
+      } else if (trimmed === '{' || trimmed === '}') {
+        // Braces
+        className += " text-gray-400"
       } else {
         className += " text-foreground"
       }

@@ -35,58 +35,48 @@ import {
   Code,
   Download,
   Play,
+  Pin,
   Brain,
-  Save
+  Save,
+  Clock
 } from "lucide-react"
 import GlassyPaneContainer from '@/src/cedar/components/containers/GlassyPaneContainer'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import { CloudServiceNode } from "./cloud-service-node"
-import { ConnectionEdge } from "./connection-edge"
-import { ConfigurationPanel } from "../panels/configuration-panel"
-import { getConnectionSuggestions, validateConnection } from "../utils/connection-validator"
-import { TerraformGenerator } from "../utils/terraform-generator"
-import { UndoRedoControls } from "../features/undo-redo-controls"
+import { ConfigurationPanel } from "./configuration-panel"
+import { getConnectionSuggestions, validateConnection } from "./connection-validator"
+import { TerraformGenerator } from "./terraform-generator"
+import { UndoRedoControls } from "./undo-redo-controls"
 import { useCanvasHistory } from "@/hooks/use-canvas-history"
 import { ProjectCanvasUtils } from "@/lib/project-canvas-utils"
 import { registerCanvasFunctions, unregisterCanvasFunctions } from "@/lib/infrastructure-manager"
-import { AgentChat } from "@/components/features/agent-chat"
+import { AgentChat } from "@/components/agent-chat"
 
-import { AIReviewDialog } from "../dialogs/ai-review-dialog"
-import { SaveStatusIndicator } from "../features/save-status-indicator"
-import { ProvidersPane } from "../panels/providers-pane"
-import { Toolbar } from "../layout/toolbar"
+import { AIReviewDialog } from "./ai-review-dialog"
+import { SaveStatusIndicator } from "./save-status-indicator"
 
-
-// Define edge types outside component to avoid recreation
-const edgeTypes = {
-  custom: ConnectionEdge,
-}
 
 const createNodeTypes = (onNodeDoubleClick: (nodeData: any) => void) => ({
   cloudService: (props: any) => <CloudServiceNode {...props} onDoubleClick={onNodeDoubleClick} />,
 })
 
-// Use custom edge type with smooth bezier curves
+const createEdgeTypes = () => {
+  console.log('Creating edge types - using default edges for now')
+  return {
+    // Temporarily removing custom edge to test
+    // custom: ConnectionEdge,
+  }
+}
+
+// Use smoothstep edge type for testing
 const defaultEdgeOptions = {
-  style: { strokeWidth: 4, stroke: '#a855f7' }, // Purple, thicker
-  type: 'custom',
+  style: { strokeWidth: 3, stroke: '#ef4444' },
+  type: 'smoothstep',
   animated: false,
 }
 
 let nodeId = 0
 const getId = () => `node_${nodeId++}`
-
-// Helper function to determine provider from service ID
-const getProviderFromServiceId = (serviceId: string): string => {
-  if (serviceId.startsWith('supabase_') || ['database', 'auth'].includes(serviceId)) return 'supabase'
-  if (serviceId.startsWith('stripe_') || ['payment'].includes(serviceId)) return 'stripe'
-  // Azure services
-  if (['vm'].includes(serviceId)) return 'azure'
-  // GCP services
-  if (['compute'].includes(serviceId)) return 'gcp'
-  // Default to AWS for all other services
-  return 'aws'
-}
 
 export function InfrastructureCanvas({ provider, onBack, projectId }: InfrastructureCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
@@ -98,8 +88,6 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   // Canvas state management
   const [isSaving, setIsSaving] = useState(false)
   const [lastSaved, setLastSaved] = useState<string | null>(null)
-  const [rightPanelWidth, setRightPanelWidth] = useState(384) // 384px = w-96
-  const [isResizing, setIsResizing] = useState(false)
 
   // Save current canvas state to project
   const saveCurrentState = useCallback(() => {
@@ -109,6 +97,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       setLastSaved(new Date().toISOString())
       
       setTimeout(() => setIsSaving(false), 1000) // Show saving indicator briefly
+      console.log('💾 Canvas state saved to project')
     }
   }, [projectId, nodes, edges])
 
@@ -126,6 +115,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
     if (projectId) {
       const savedState = ProjectCanvasUtils.loadCanvasState(projectId)
       if (savedState) {
+        console.log('Loading saved canvas state for project:', projectId)
         setNodes(savedState.nodes)
         setEdges(savedState.edges)
         // Initialize history with the loaded state as the initial state
@@ -139,6 +129,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   useEffect(() => {
     const currentState = getCurrentState()
     if (currentState && !isSyncingFromHistory.current) {
+      console.log('Syncing state from history:', currentState)
       isSyncingFromHistory.current = true
       setNodes(currentState.nodes)
       setEdges(currentState.edges)
@@ -151,15 +142,22 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   // Canvas add functions for AI infrastructure creation
   const addNodesToCanvas = useCallback((newNodes: Node[]) => {
+    console.log('🎯 Canvas: AI adding nodes directly to canvas:', newNodes.length)
+
     setNodes((currentNodes) => {
+      console.log('📊 Canvas: Current nodes:', currentNodes.length, 'Adding:', newNodes.length)
       const updatedNodes = [...currentNodes, ...newNodes]
+      console.log('📊 Canvas: New total nodes:', updatedNodes.length)
       return updatedNodes
     })
   }, [])
 
   const addEdgesToCanvas = useCallback((newEdges: Edge[]) => {
+    console.log('🔗 Canvas: AI adding edges directly to canvas:', newEdges.length)
     setEdges((currentEdges) => {
+      console.log('📊 Canvas: Current edges:', currentEdges.length, 'Adding:', newEdges.length)
       const updatedEdges = [...currentEdges, ...newEdges]
+      console.log('📊 Canvas: New total edges:', updatedEdges.length)
       return updatedEdges
     })
   }, [])
@@ -171,13 +169,29 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   // Register canvas functions for AI infrastructure creation
   useEffect(() => {
+    console.log('🎨 Infrastructure Canvas: Registering functions for AI')
     registerCanvasFunctions(addNodesToCanvas, addEdgesToCanvas, getCanvasState)
 
     return () => {
+      console.log('🎨 Infrastructure Canvas: Unregistering functions')
       unregisterCanvasFunctions()
     }
   }, [addNodesToCanvas, addEdgesToCanvas, getCanvasState])
 
+  // Debug: Log edges changes
+  useEffect(() => {
+    console.log('Edges updated:', edges)
+    console.log('Edges length:', edges.length)
+    if (edges.length > 0) {
+      console.log('First edge details:', edges[0])
+    }
+  }, [edges])
+
+  // Debug: Log nodes changes
+  useEffect(() => {
+    console.log('Nodes updated:', nodes)
+    console.log('Nodes length:', nodes.length)
+  }, [nodes])
 
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -249,30 +263,37 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   const onConnect: OnConnect = useCallback(
     (params: Connection | Edge) => {
+      console.log('onConnect called with params:', params)
+      
       const sourceNode = nodes.find((n) => n.id === params.source)
       const targetNode = nodes.find((n) => n.id === params.target)
 
       if (!sourceNode || !targetNode) {
+        console.log('Source or target node not found')
         return
       }
 
       const sourceType = (sourceNode.data as any).id
       const targetType = (targetNode.data as any).id
 
+      console.log('Connecting:', sourceType, 'to', targetType)
+
       // Validate the connection
       const rule = validateConnection(sourceType, targetType, provider)
       
       const newEdge = {
         ...params,
-        type: 'custom',
+        type: 'smoothstep',
         animated: false,
-        style: { strokeWidth: 4, stroke: '#a855f7' }, // Purple color, thicker
+        style: { strokeWidth: 4, stroke: '#10b981' }, // Green color
         data: {
           relationship: rule?.relationship || "connects_to",
           description: rule?.description || "Manual connection",
           bidirectional: rule?.bidirectional || false,
         },
       }
+      
+      console.log('Creating new edge:', newEdge)
       
       // Calculate the new state before applying it
       const updatedEdges = addEdge(newEdge, edges)
@@ -324,7 +345,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         position,
         data: {
           ...service,
-          provider: getProviderFromServiceId(service.id),
+          provider: provider,
           config: service.defaultConfig || {},
           terraformType: service.terraformType,
         },
@@ -436,19 +457,20 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   const handleSaveConfig = () => {
     // Trigger Terraform file regeneration when save is pressed
     updateAllTerraformFiles()
+    console.log('Configuration saved - Terraform files updated')
+    
+    // Optional: Add visual feedback (could be enhanced with toast notifications)
+    // For now, we'll just log the success
+    console.log('✅ Configuration saved successfully!')
   }
 
   const handleAIReview = async () => {
-    
     setIsAIReviewOpen(true)
     setIsAIReviewLoading(true)
     setAiReviewError(null)
     setAiAnalysis(null)
 
     try {
-      // Generate fresh terraform files before review
-      const freshTerraformFiles = await generateTerraformFilesForReview()
-      
       // Create an AbortController for timeout
       const controller = new AbortController()
       const timeoutId = setTimeout(() => controller.abort(), 30000) // 30 second timeout
@@ -459,7 +481,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          terraformFiles: freshTerraformFiles,
+          terraformFiles,
           provider,
         }),
         signal: controller.signal
@@ -494,11 +516,9 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     try {
       const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
-      const code = await terraformGenerator.generateTerraformCode()
-      
-      return code
+      return await terraformGenerator.generateTerraformCode()
     } catch (error) {
-      console.error('❌ Error generating Terraform code:', error)
+      console.error('Error generating Terraform code:', error)
       return `# Error generating Terraform code: ${error}`
     }
   }
@@ -523,172 +543,8 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   }
 
-  // Helper function to generate Terraform files and return them (for AI review)
-  const generateTerraformFilesForReview = async () => {
-    const mainTf = await generateTerraformCode()
-    
-    // Generate separate files using TerraformGenerator
-    let variablesTf: string = ""
-    let outputsTf: string = ""
-    let providersTf: string = ""
-    
-    if (nodes.length > 0) {
-      try {
-        const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
-        const output = await terraformGenerator.generate()
-        
-        // Generate variables.tf
-        if (Object.keys(output.variables).length > 0) {
-          variablesTf = "# Variables\n"
-          Object.entries(output.variables).forEach(([name, config]) => {
-            variablesTf += `variable "${name}" {\n`
-            Object.entries(config as Record<string, any>).forEach(([key, value]) => {
-              if (key === "type" && value === "string") {
-                variablesTf += `  ${key} = ${value}\n`
-              } else if (typeof value === "string") {
-                variablesTf += `  ${key} = "${value}"\n`
-              } else if (typeof value === "boolean") {
-                variablesTf += `  ${key} = ${value}\n`
-              } else {
-                variablesTf += `  ${key} = ${JSON.stringify(value)}\n`
-              }
-            })
-            variablesTf += "}\n\n"
-          })
-        } else {
-          variablesTf = `# Variables for your infrastructure
-variable "region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-west-2"
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "dev"
-}
-`
-        }
-        
-        // Generate outputs.tf
-        const terraformOutput = terraformGenerator.generate()
-        if (Object.keys(terraformOutput.outputs).length > 0) {
-          outputsTf = "# Outputs\n"
-          Object.entries(terraformOutput.outputs).forEach(([name, config]) => {
-            outputsTf += `output "${name}" {\n`
-            Object.entries(config as Record<string, any>).forEach(([key, value]) => {
-              if (typeof value === "string") {
-                outputsTf += `  ${key} = "${value}"\n`
-              } else if (typeof value === "boolean") {
-                outputsTf += `  ${key} = ${value}\n`
-              } else {
-                outputsTf += `  ${key} = ${JSON.stringify(value)}\n`
-              }
-            })
-            outputsTf += "}\n\n"
-          })
-        } else {
-          outputsTf = `# Outputs for your infrastructure
-output "resources_created" {
-  description = "Number of resources created"
-  value       = ${nodes.length}
-}
-`
-        }
-        
-        // Generate providers.tf
-        providersTf = terraformGenerator.generateProviderBlock()
-        
-      } catch (error) {
-        console.error('Error generating Terraform files:', error)
-        // Fallback to default content
-        variablesTf = `# Variables for your infrastructure
-variable "region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-west-2"
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "dev"
-}
-`
-
-        outputsTf = `# Outputs for your infrastructure
-output "resources_created" {
-  description = "Number of resources created"
-  value       = ${nodes.length}
-}
-`
-
-        providersTf = `# Provider configuration
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.region
-}
-`
-      }
-    } else {
-      // Default content when no nodes
-      variablesTf = `# Variables for your infrastructure
-variable "region" {
-  description = "AWS region"
-  type        = string
-  default     = "us-west-2"
-}
-
-variable "environment" {
-  description = "Environment name"
-  type        = string
-  default     = "dev"
-}
-`
-
-      outputsTf = `# Outputs for your infrastructure
-output "resources_created" {
-  description = "Number of resources created"
-  value       = ${nodes.length}
-}
-`
-
-      providersTf = `# Provider configuration
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.0"
-    }
-  }
-}
-
-provider "aws" {
-  region = var.region
-}
-`
-    }
-
-    return {
-      "main.tf": mainTf,
-      "variables.tf": variablesTf,
-      "outputs.tf": outputsTf,
-      "providers.tf": providersTf
-    }
-  }
-
-  // Helper function to generate Terraform files (updates state)
+  // Helper function to generate Terraform files
   const generateTerraformFiles = async () => {
-    
     const mainTf = await generateTerraformCode()
     
     // Generate separate files using TerraformGenerator
@@ -999,47 +855,13 @@ provider "aws" {
     initFiles()
   }, [])
 
-  // Update main.tf when nodes or edges change
+  // Update main.tf when nodes change
   useEffect(() => {
     const updateFiles = async () => {
       await updateMainTf()
     }
     updateFiles()
   }, [nodes, edges])
-
-  // Handle resize functionality
-  const handleMouseDown = useCallback(() => {
-    setIsResizing(true)
-  }, [])
-
-  useEffect(() => {
-    const handleMouseMove = (e: MouseEvent) => {
-      if (!isResizing) return
-      
-      const newWidth = window.innerWidth - e.clientX
-      // Min width: 320px, Max width: 800px
-      setRightPanelWidth(Math.max(320, Math.min(800, newWidth)))
-    }
-
-    const handleMouseUp = () => {
-      setIsResizing(false)
-    }
-
-    if (isResizing) {
-      document.addEventListener('mousemove', handleMouseMove)
-      document.addEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = 'ew-resize'
-      document.body.style.userSelect = 'none'
-    }
-
-    return () => {
-      document.removeEventListener('mousemove', handleMouseMove)
-      document.removeEventListener('mouseup', handleMouseUp)
-      document.body.style.cursor = ''
-      document.body.style.userSelect = ''
-    }
-  }, [isResizing])
-
   // Handle keyboard events for delete and undo/redo functionality
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
@@ -1077,61 +899,63 @@ provider "aws" {
 
   return (
     <div className="h-screen bg-white flex flex-col">
-      {/* Top Header with Back Button and Toolbar */}
-      <div className="flex flex-col">
-        <div className="h-12 border-b border-gray-200 bg-white flex items-center px-4">
-          <Button
-            variant="ghost"
-            size="sm"
-            onClick={onBack}
-            className="text-gray-600 hover:text-gray-900"
-          >
+      {/* Top Header */}
+      <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4">
+        <div className="flex items-center gap-4">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-600 hover:text-gray-900">
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
+          <div className="flex items-center gap-2">
+            <UndoRedoControls
+              canUndo={canUndo}
+              canRedo={canRedo}
+              onUndo={undo}
+              onRedo={redo}
+              showCounts={true}
+              historyLength={historyLength}
+              currentIndex={currentIndex}
+            />
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              onClick={saveCurrentState}
+              disabled={!hasUnsavedChanges()}
+              className="text-gray-600 hover:text-gray-900"
+            >
+              <Save className="w-4 h-4 mr-2" />
+              {isSaving ? 'Saving...' : 'Save'}
+            </Button>
+            <SaveStatusIndicator
+              isAutoSaving={isSaving}
+              hasUnsavedChanges={hasUnsavedChanges()}
+              lastSaved={lastSaved}
+            />
+          </div>
         </div>
-        <Toolbar
-          onSave={saveCurrentState}
-          onGenerateTerraform={async () => {
-            await generateTerraformFiles();
-          }}
-          onPlanOrApply={handleDeploy}
-          onUndo={undo}
-          onRedo={redo}
-          onAIReview={handleAIReview}
-          canUndo={canUndo}
-          canRedo={canRedo}
-          deploymentStage={isDeploying ? "applying" : "none"}
-          isGeneratingTerraform={false}
-        />
-      </div>
+      </header>
 
       <div className="flex-1 flex">
         {/* Left Sidebar */}
         <aside className="w-80 border-r border-gray-200 bg-white overflow-y-auto">
           <div className="p-4 space-y-4">
+            
             {/* Cloud Services */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">
-                    Cloud Services
-                  </span>
+                  <span className="font-medium text-gray-900">Cloud Services</span>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2 max-h-96 overflow-y-auto">
                 {!servicesLoaded ? (
                   <div className="col-span-3 flex items-center justify-center p-4">
                     <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-purple-600"></div>
-                    <span className="ml-2 text-sm text-gray-600">
-                      Loading services...
-                    </span>
+                    <span className="ml-2 text-sm text-gray-600">Loading services...</span>
                   </div>
                 ) : services.length === 0 ? (
                   <div className="col-span-3 flex items-center justify-center p-4">
-                    <span className="text-sm text-gray-600">
-                      No services available
-                    </span>
+                    <span className="text-sm text-gray-600">No services available</span>
                   </div>
                 ) : (
                   services.map((service) => (
@@ -1142,19 +966,13 @@ provider "aws" {
                       onDragStart={(event) => onDragStart(event, service)}
                     >
                       <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-1">
-                        {service.icon.startsWith("/") ? (
-                          <img
-                            src={service.icon}
-                            alt={service.name}
-                            className="w-6 h-6"
-                          />
+                        {service.icon.startsWith('/') ? (
+                          <img src={service.icon} alt={service.name} className="w-6 h-6" />
                         ) : (
                           <span className="text-lg">{service.icon}</span>
                         )}
                       </div>
-                      <span className="text-xs text-gray-700 text-center leading-tight">
-                        {service.name}
-                      </span>
+                      <span className="text-xs text-gray-700 text-center leading-tight">{service.name}</span>
                     </div>
                   ))
                 )}
@@ -1172,12 +990,9 @@ provider "aws" {
               {(selectedNodes.length > 0 || selectedEdges.length > 0) && (
                 <div className="mb-2">
                   <div className="text-xs text-red-600 mb-1">
-                    Selected: {selectedNodes.length} node
-                    {selectedNodes.length !== 1 ? "s" : ""},{" "}
-                    {selectedEdges.length} edge
-                    {selectedEdges.length !== 1 ? "s" : ""}
+                    Selected: {selectedNodes.length} node{selectedNodes.length !== 1 ? 's' : ''}, {selectedEdges.length} edge{selectedEdges.length !== 1 ? 's' : ''}
                   </div>
-                  <Button
+                  <Button 
                     onClick={deleteSelectedElements}
                     size="sm"
                     variant="destructive"
@@ -1193,6 +1008,7 @@ provider "aws" {
 
         {/* Central Canvas */}
         <main className="flex-1 flex flex-col">
+
           {/* Canvas Area */}
           <div className="flex-1 relative bg-gray-50">
             <div className="h-full">
@@ -1204,20 +1020,21 @@ provider "aws" {
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
                   onInit={(instance) => {
-                    setReactFlowInstance(instance as any);
+                    console.log('ReactFlow initialized:', instance)
+                    setReactFlowInstance(instance as any)
                   }}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
                   onSelectionChange={handleSelectionChange}
                   nodeTypes={createNodeTypes(handleNodeDoubleClick)}
-                  edgeTypes={edgeTypes}
+                  // edgeTypes={createEdgeTypes()}
                   className="bg-gray-50"
                   proOptions={{ hideAttribution: true }}
-                  connectionLineStyle={{
-                    stroke: "#a855f7",
+                  connectionLineStyle={{ 
+                    stroke: "#a855f7", 
                     strokeWidth: 4,
                     strokeLinecap: "round",
-                    strokeLinejoin: "round",
+                    strokeLinejoin: "round"
                   }}
                   connectionLineType={ConnectionLineType.Bezier}
                   connectionMode={ConnectionMode.Loose}
@@ -1240,16 +1057,34 @@ provider "aws" {
                   minZoom={0.1}
                   maxZoom={4}
                 >
-                  <Background
-                    variant={BackgroundVariant.Dots}
-                    gap={20}
-                    size={2}
+                  <Background 
+                    variant={BackgroundVariant.Dots} 
+                    gap={20} 
+                    size={2} 
                     color="#9ca3af"
-                    style={{ backgroundColor: "#f9fafb" }}
+                    style={{ backgroundColor: '#f9fafb' }}
                   />
                 </ReactFlow>
               </ReactFlowProvider>
             </div>
+            
+            {/* AI Review Button - Bottom Right */}
+            <div className="absolute bottom-4 right-4 pointer-events-none z-10">
+              <div className="pointer-events-auto">
+                <GlassyPaneContainer
+                  className="cursor-pointer hover:scale-105 transition-transform duration-200"
+                  onClick={handleAIReview}
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                >
+                  <button className="px-6 py-3 flex items-center gap-2 text-sm font-medium text-gray-800 hover:text-gray-900">
+                    <Brain className="w-5 h-5" />
+                    AI Review
+                  </button>
+                </GlassyPaneContainer>
+              </div>
+            </div>
+
           </div>
         </main>
 
@@ -1264,27 +1099,10 @@ provider "aws" {
             onSave={handleSaveConfig}
           />
         ) : (
-          <aside
-            className="border-l border-gray-200 bg-gray-50 text-gray-900 flex flex-col relative h-full"
-            style={{ width: `${rightPanelWidth}px` }}
-          >
-            {/* Resize Handle */}
-            <div
-              className="absolute left-0 top-0 bottom-0 w-1 cursor-ew-resize hover:bg-blue-500 transition-colors z-50"
-              onMouseDown={handleMouseDown}
-              style={{
-                width: "4px",
-                marginLeft: "-2px",
-                backgroundColor: isResizing ? "#3b82f6" : "transparent",
-              }}
-            />
-            {/* Terraform Code Section - Takes up flex space */}
-            <div
-              className="flex flex-col overflow-hidden"
-              style={{ flex: "3 1 0", minHeight: "300px" }}
-            >
+          <aside className="w-80 border-l border-gray-200 bg-gray-50 text-gray-900">
+            <div className="h-full flex flex-col">
               {/* Code Editor Header */}
-              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50 shrink-0">
+              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50">
                 <div className="flex items-center gap-2">
                   <Code className="w-4 h-4" />
                   <Select value={activeFile} onValueChange={handleFileChange}>
@@ -1292,45 +1110,20 @@ provider "aws" {
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-100 border-gray-300">
-                      <SelectItem
-                        value="main.tf"
-                        className="text-gray-900 hover:bg-gray-200"
-                      >
-                        main.tf
-                      </SelectItem>
-                      <SelectItem
-                        value="variables.tf"
-                        className="text-gray-900 hover:bg-gray-200"
-                      >
-                        variables.tf
-                      </SelectItem>
-                      <SelectItem
-                        value="outputs.tf"
-                        className="text-gray-900 hover:bg-gray-200"
-                      >
-                        outputs.tf
-                      </SelectItem>
-                      <SelectItem
-                        value="providers.tf"
-                        className="text-gray-900 hover:bg-gray-200"
-                      >
-                        providers.tf
-                      </SelectItem>
+                      <SelectItem value="main.tf" className="text-gray-900 hover:bg-gray-200">main.tf</SelectItem>
+                      <SelectItem value="variables.tf" className="text-gray-900 hover:bg-gray-200">variables.tf</SelectItem>
+                      <SelectItem value="outputs.tf" className="text-gray-900 hover:bg-gray-200">outputs.tf</SelectItem>
+                      <SelectItem value="providers.tf" className="text-gray-900 hover:bg-gray-200">providers.tf</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button
-                    onClick={() => handleDownloadTerraformCode(activeFile)}
-                    variant="ghost"
-                    size="sm"
-                    className="text-gray-600 hover:text-gray-900"
-                  >
+                  <Button onClick={() => handleDownloadTerraformCode(activeFile)} variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
                     <Download className="w-4 h-4" />
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
+                  <Button 
+                    variant="ghost" 
+                    size="sm" 
                     className="text-gray-600 hover:text-gray-900"
                     onClick={handleDeploy}
                     disabled={isDeploying}
@@ -1341,18 +1134,12 @@ provider "aws" {
               </div>
 
               {/* Code Content */}
-              <div
-                className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col"
-                style={{ minHeight: 0 }}
-              >
+              <div className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col">
                 {/* Deployment Status */}
-                {(isDeploying ||
-                  deploymentStatus ||
-                  deploymentError ||
-                  fakeProgress > 0) && (
-                  <div className="mb-4 shrink-0">
+                {(isDeploying || deploymentStatus || deploymentError || fakeProgress > 0) && (
+                  <div className="mb-4">
                     {/* Progress bar (fake/approximate) placed above the status box */}
-                    {isProgressVisible && (isDeploying || fakeProgress > 0) && (
+                    {(isProgressVisible && (isDeploying || fakeProgress > 0)) && (
                       <div className="mb-2 relative">
                         <div className="absolute top-0 right-0">
                           <button
@@ -1363,110 +1150,87 @@ provider "aws" {
                             ×
                           </button>
                         </div>
-                        <div className="text-xs text-gray-600 mb-1">
-                          Deployment progress
-                        </div>
+                        <div className="text-xs text-gray-600 mb-1">Deployment progress</div>
                         <div className="w-full bg-gray-200 rounded-full h-2">
                           <div
                             className="bg-blue-600 h-2 rounded-full transition-all duration-700"
-                            style={{
-                              width: `${Math.min(
-                                100,
-                                Math.max(0, Math.round(fakeProgress))
-                              )}%`,
-                            }}
+                            style={{ width: `${Math.min(100, Math.max(0, Math.round(fakeProgress)))}%` }}
                           />
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">
-                          {Math.round(fakeProgress)}%
-                        </div>
+                        <div className="text-xs text-gray-500 mt-1">{Math.round(fakeProgress)}%</div>
                       </div>
                     )}
 
                     <div className="p-3 bg-white rounded-lg border">
-                      {isDeploying && deploymentStatus && (
-                        <div className="space-y-2">
-                          <div className="flex items-center justify-between">
-                            <span className="text-sm font-medium text-gray-900">
-                              {deploymentStatus.message}
-                            </span>
-                            <span className="text-xs text-gray-500">
-                              {deploymentStatus.progress}%
-                            </span>
-                          </div>
-                          <div className="w-full bg-gray-200 rounded-full h-2">
-                            <div
-                              className="bg-blue-600 h-2 rounded-full transition-all duration-300"
-                              style={{ width: `${deploymentStatus.progress}%` }}
-                            ></div>
-                          </div>
-                          {deploymentStatus.logs.length > 0 && (
-                            <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-20 overflow-y-auto">
-                              {deploymentStatus.logs
-                                .slice(-3)
-                                .map((log, index) => (
-                                  <div key={index} className="mb-1">
-                                    {log}
-                                  </div>
-                                ))}
-                            </div>
-                          )}
+                    {isDeploying && deploymentStatus && (
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="text-sm font-medium text-gray-900">
+                            {deploymentStatus.message}
+                          </span>
+                          <span className="text-xs text-gray-500">
+                            {deploymentStatus.progress}%
+                          </span>
                         </div>
-                      )}
-
-                      {deploymentError && (
-                        <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
-                          <div className="font-medium">Deployment Error:</div>
-                          <div>{deploymentError}</div>
+                        <div className="w-full bg-gray-200 rounded-full h-2">
+                          <div 
+                            className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                            style={{ width: `${deploymentStatus.progress}%` }}
+                          ></div>
                         </div>
-                      )}
-
-                      {deploymentStatus?.status === "completed" && (
-                        <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
-                          <div className="font-medium">
-                            ✓ Deployment Completed Successfully!
+                        {deploymentStatus.logs.length > 0 && (
+                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-20 overflow-y-auto">
+                            {deploymentStatus.logs.slice(-3).map((log, index) => (
+                              <div key={index} className="mb-1">{log}</div>
+                            ))}
                           </div>
-                          {deploymentStatus.outputs && (
-                            <div className="mt-2 text-xs">
-                              <div className="font-medium">Outputs:</div>
-                              {Object.entries(deploymentStatus.outputs).map(
-                                ([key, value]) => (
-                                  <div key={key}>
-                                    {key}: {String(value)}
-                                  </div>
-                                )
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )}
-                    </div>
+                        )}
+                      </div>
+                    )}
+                    
+                    {deploymentError && (
+                      <div className="text-sm text-red-600 bg-red-50 p-2 rounded">
+                        <div className="font-medium">Deployment Error:</div>
+                        <div>{deploymentError}</div>
+                      </div>
+                    )}
+                    
+                    {deploymentStatus?.status === 'completed' && (
+                      <div className="text-sm text-green-600 bg-green-50 p-2 rounded">
+                        <div className="font-medium">✓ Deployment Completed Successfully!</div>
+                        {deploymentStatus.outputs && (
+                          <div className="mt-2 text-xs">
+                            <div className="font-medium">Outputs:</div>
+                            {Object.entries(deploymentStatus.outputs).map(([key, value]) => (
+                              <div key={key}>{key}: {String(value)}</div>
+                            ))}
+                          </div>
+                        )}
+                      </div>
+                    )}
                   </div>
+                </div>
                 )}
 
                 <textarea
-                  value={
-                    terraformFiles[activeFile as keyof typeof terraformFiles]
-                  }
+                  value={terraformFiles[activeFile as keyof typeof terraformFiles]}
                   onChange={(e) => handleFileContentChange(e.target.value)}
-                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none min-h-0"
+                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none"
                   placeholder="Start typing your Terraform configuration..."
                   spellCheck={false}
                 />
               </div>
             </div>
-
+            
             {/* Providers Pane - Bottom Section - Takes up flex space */}
-            <div
-              className="flex flex-col overflow-auto bg-sidebar"
-              style={{ flex: "2 1 0", minHeight: "200px" }}
-            >
+            <div className="flex flex-col overflow-auto bg-sidebar" style={{ flex: '2 1 0', minHeight: '200px' }}>
               <ProvidersPane currentProvider={provider} nodes={nodes} />
             </div>
           </aside>
         )}
       </div>
 
+      
       {/* AI Review Dialog */}
       <AIReviewDialog
         isOpen={isAIReviewOpen}
@@ -1482,9 +1246,7 @@ provider "aws" {
           <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-[520px] h-[500px] flex flex-col">
             <div className="flex items-center justify-between p-3 border-b border-gray-200">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">
-                  AI Assistant - Rex
-                </span>
+                <span className="font-medium text-gray-900">AI Assistant - Rex</span>
               </div>
               <Button
                 variant="ghost"
@@ -1509,5 +1271,5 @@ provider "aws" {
         )}
       </div>
     </div>
-  );
+  )
 }
