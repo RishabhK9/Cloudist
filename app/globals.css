@@ -4,74 +4,41 @@
 @custom-variant dark (&:is(.dark *));
 
 :root {
-  --background: oklch(0.99 0 0);
-  --foreground: oklch(0.09 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.09 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.09 0 0);
-  --primary: oklch(0.09 0 0);
-  --primary-foreground: oklch(0.98 0 0);
-  --secondary: oklch(0.96 0 0);
-  --secondary-foreground: oklch(0.09 0 0);
-  --muted: oklch(0.96 0 0);
-  --muted-foreground: oklch(0.45 0 0);
-  --accent: oklch(0.96 0 0);
-  --accent-foreground: oklch(0.09 0 0);
-  --destructive: oklch(0.628 0.258 29.234);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.89 0 0);
-  --input: oklch(0.96 0 0);
-  --ring: oklch(0.09 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+  /* Updated theme for dark infrastructure builder with purple accents */
+  --background: oklch(0.12 0.01 265);
+  --foreground: oklch(0.95 0.01 265);
+  --card: oklch(0.15 0.01 265);
+  --card-foreground: oklch(0.95 0.01 265);
+  --popover: oklch(0.15 0.01 265);
+  --popover-foreground: oklch(0.95 0.01 265);
+  --primary: oklch(0.58 0.22 280);
+  --primary-foreground: oklch(0.98 0.01 265);
+  --secondary: oklch(0.2 0.01 265);
+  --secondary-foreground: oklch(0.95 0.01 265);
+  --muted: oklch(0.18 0.01 265);
+  --muted-foreground: oklch(0.6 0.01 265);
+  --accent: oklch(0.58 0.22 280);
+  --accent-foreground: oklch(0.98 0.01 265);
+  --destructive: oklch(0.55 0.22 25);
+  --destructive-foreground: oklch(0.98 0.01 265);
+  --border: oklch(0.22 0.01 265);
+  --input: oklch(0.22 0.01 265);
+  --ring: oklch(0.58 0.22 280);
+  --chart-1: oklch(0.58 0.22 280);
+  --chart-2: oklch(0.65 0.2 200);
+  --chart-3: oklch(0.7 0.18 160);
+  --chart-4: oklch(0.6 0.2 320);
+  --chart-5: oklch(0.68 0.19 40);
   --radius: 0.5rem;
-  --sidebar: oklch(0.98 0 0);
-  --sidebar-foreground: oklch(0.09 0 0);
-  --sidebar-primary: oklch(0.09 0 0);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.96 0 0);
-  --sidebar-accent-foreground: oklch(0.09 0 0);
-  --sidebar-border: oklch(0.89 0 0);
-  --sidebar-ring: oklch(0.09 0 0);
-}
-
-.dark {
-  --background: oklch(0.09 0 0);
-  --foreground: oklch(0.98 0 0);
-  --card: oklch(0.12 0 0);
-  --card-foreground: oklch(0.98 0 0);
-  --popover: oklch(0.12 0 0);
-  --popover-foreground: oklch(0.98 0 0);
-  --primary: oklch(0.98 0 0);
-  --primary-foreground: oklch(0.09 0 0);
-  --secondary: oklch(0.16 0 0);
-  --secondary-foreground: oklch(0.98 0 0);
-  --muted: oklch(0.16 0 0);
-  --muted-foreground: oklch(0.65 0 0);
-  --accent: oklch(0.16 0 0);
-  --accent-foreground: oklch(0.98 0 0);
-  --destructive: oklch(0.628 0.258 29.234);
-  --destructive-foreground: oklch(0.98 0 0);
-  --border: oklch(0.24 0 0);
-  --input: oklch(0.16 0 0);
-  --ring: oklch(0.98 0 0);
-  --chart-1: oklch(0.488 0.243 264.376);
-  --chart-2: oklch(0.696 0.17 162.48);
-  --chart-3: oklch(0.769 0.188 70.08);
-  --chart-4: oklch(0.627 0.265 303.9);
-  --chart-5: oklch(0.645 0.246 16.439);
-  --sidebar: oklch(0.12 0 0);
-  --sidebar-foreground: oklch(0.98 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.98 0 0);
-  --sidebar-accent: oklch(0.16 0 0);
-  --sidebar-accent-foreground: oklch(0.98 0 0);
-  --sidebar-border: oklch(0.24 0 0);
-  --sidebar-ring: oklch(0.98 0 0);
+  --sidebar: oklch(0.11 0.01 265);
+  --sidebar-foreground: oklch(0.95 0.01 265);
+  --sidebar-primary: oklch(0.58 0.22 280);
+  --sidebar-primary-foreground: oklch(0.98 0.01 265);
+  --sidebar-accent: oklch(0.2 0.01 265);
+  --sidebar-accent-foreground: oklch(0.95 0.01 265);
+  --sidebar-border: oklch(0.22 0.01 265);
+  --sidebar-ring: oklch(0.58 0.22 280);
+  --canvas-grid: oklch(0.18 0.01 265);
 }
 
 @theme inline {
@@ -113,169 +80,53 @@
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-ring: var(--sidebar-ring);
+  --color-canvas-grid: var(--canvas-grid);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  html, body {
+  body {
     @apply bg-background text-foreground;
-    height: 100%;
-    overflow-x: hidden;
-  }
-  #__next {
-    height: 100%;
   }
 }
 
-/* Custom grid pattern for background */
-.grid-pattern {
-  background-image: linear-gradient(hsl(var(--muted-foreground) / 0.1) 1px, transparent 1px),
-    linear-gradient(90deg, hsl(var(--muted-foreground) / 0.1) 1px, transparent 1px);
+/* Added custom styles for canvas grid and connections */
+.canvas-grid {
+  background-image: radial-gradient(circle, var(--canvas-grid) 1px, transparent 1px);
   background-size: 20px 20px;
 }
 
-/* ReactFlow Controls styling */
-.react-flow__controls {
-  position: absolute !important;
-  bottom: 20px !important;
-  left: 20px !important;
-  z-index: 1000 !important;
-  background: white !important;
-  border: 1px solid #e5e7eb !important;
-  border-radius: 8px !important;
-  box-shadow: 0 1px 3px 0 rgba(0, 0, 0, 0.1), 0 1px 2px 0 rgba(0, 0, 0, 0.06) !important;
+/* Improved connection line styling with better visibility */
+.connection-line {
+  stroke: hsl(var(--primary));
+  stroke-width: 2.5;
+  fill: none;
+  transition: stroke-width 0.2s ease;
 }
 
-.react-flow__controls-button {
-  background: white !important;
-  border: none !important;
-  color: #374151 !important;
-  width: 32px !important;
-  height: 32px !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
-  cursor: pointer !important;
-  transition: all 0.2s ease !important;
+.connection-line:hover {
+  stroke-width: 4;
+  stroke: hsl(var(--accent));
 }
 
-.react-flow__controls-button:hover {
-  background: #f3f4f6 !important;
-  color: #111827 !important;
+/* Added smooth animations for connections */
+@keyframes dash {
+  to {
+    stroke-dashoffset: -200;
+  }
 }
 
-.react-flow__controls-button:active {
-  background: #e5e7eb !important;
-}
-
-.react-flow__controls-button svg {
-  width: 16px !important;
-  height: 16px !important;
-}
-
-/* Terraform code editor styling */
-.terraform-editor {
-  font-family: 'Fira Code', 'Monaco', 'Cascadia Code', 'Roboto Mono', monospace;
-  line-height: 1.6;
-  tab-size: 2;
-}
-
-.terraform-editor:focus {
-  outline: none;
-}
-
-/* Basic syntax highlighting for Terraform */
-.terraform-editor::selection {
-  background-color: rgba(59, 130, 246, 0.3);
-}
-
-/* Force ReactFlow to use straight edges */
-.react-flow__edge {
-  stroke-linecap: round !important;
-  stroke-linejoin: round !important;
-}
-
-/* Make connection handles more visible and easier to use */
-.react-flow__handle {
-  width: 10px !important;
-  height: 10px !important;
-  border: 2px solid white !important;
-  opacity: 0.8 !important;
-  transition: all 0.2s ease !important;
-}
-
-/* Source handles (green) */
-.react-flow__handle[data-handleid*="source"] {
-  background: #10b981 !important;
-}
-
-/* Target handles (blue) */
-.react-flow__handle[data-handleid*="target"] {
-  background: #3b82f6 !important;
-}
-
-.react-flow__handle:hover {
-  opacity: 1 !important;
-  transform: scale(1.3) !important;
-}
-
-.react-flow__handle-connecting {
-  background: #f59e0b !important;
-  border-color: white !important;
-  transform: scale(1.4) !important;
-}
-
-.react-flow__handle-valid {
-  background: #10b981 !important;
-  border-color: white !important;
-}
-
-/* Improve edge selection and interaction */
-.react-flow__edge-path {
-  cursor: pointer !important;
-  pointer-events: all !important;
-}
-
-.react-flow__edge.selected .react-flow__edge-path {
-  stroke-width: 3 !important;
-  stroke: #3b82f6 !important;
-}
-
-.react-flow__edge:hover .react-flow__edge-path {
-  stroke-width: 3 !important;
-  stroke: #1d4ed8 !important;
-}
-
-/* Ensure handles stay in place and are clickable */
-.react-flow__handle {
-  position: absolute !important;
-  pointer-events: all !important;
-}
-
-/* Top and bottom handles */
-.react-flow__handle-top {
-  top: -6px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-}
-
-.react-flow__handle-bottom {
-  bottom: -6px !important;
-  left: 50% !important;
-  transform: translateX(-50%) !important;
-}
-
-/* Left and right handles */
-.react-flow__handle-left {
-  left: -6px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
-}
-
-.react-flow__handle-right {
-  right: -6px !important;
-  top: 50% !important;
-  transform: translateY(-50%) !important;
+/* Added pulse animation for connecting mode */
+@keyframes pulse-ring {
+  0%,
+  100% {
+    opacity: 1;
+    transform: scale(1);
+  }
+  50% {
+    opacity: 0.5;
+    transform: scale(1.05);
+  }
 }
