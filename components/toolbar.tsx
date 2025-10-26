@@ -1,20 +1,40 @@
 "use client"
 
-import { Save, Rocket, Undo2, Redo2, Brain } from "lucide-react"
+import { Save, Code, Rocket, Undo2, Redo2, CheckCircle, Eye, FileCode, Loader2, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 
 interface ToolbarProps {
   onSave: () => void
-  onDeploy: () => void
+  onGenerateTerraform?: () => void
+  onDeploy?: () => void
+  onPlanOrApply?: () => void
   onUndo: () => void
   onRedo: () => void
   onCodeReview?: () => void
+  onViewPreview?: () => void
+  onViewCode?: () => void
   canUndo?: boolean
   canRedo?: boolean
+  deploymentStage?: 'none' | 'generated' | 'planned' | 'applying' | 'applied'
+  isGeneratingTerraform?: boolean
 }
 
-export function Toolbar({ onSave, onDeploy, onUndo, onRedo, onCodeReview, canUndo, canRedo }: ToolbarProps) {
+export function Toolbar({ 
+  onSave, 
+  onGenerateTerraform,
+  onDeploy,
+  onPlanOrApply, 
+  onUndo, 
+  onRedo, 
+  onCodeReview,
+  onViewPreview,
+  onViewCode,
+  canUndo, 
+  canRedo,
+  deploymentStage = 'none',
+  isGeneratingTerraform 
+}: ToolbarProps) {
   // Detect if user is on Mac - use state to avoid hydration mismatch
   const [isMac, setIsMac] = useState(false)
 
@@ -59,7 +79,8 @@ export function Toolbar({ onSave, onDeploy, onUndo, onRedo, onCodeReview, canUnd
 
       {/* Right Section */}
       <div className="flex items-center gap-2 flex-1 justify-end">
-        {onCodeReview && (
+        {/* Code Review Button - Always visible except when applying */}
+        {onCodeReview && deploymentStage !== 'applying' && (
           <Button 
             variant="default"
             size="default"
@@ -71,10 +92,165 @@ export function Toolbar({ onSave, onDeploy, onUndo, onRedo, onCodeReview, canUnd
             Code Review
           </Button>
         )}
-        <Button className="bg-primary hover:bg-primary/90" onClick={onDeploy}>
-          <Rocket className="w-4 h-4 mr-2" />
-          Deploy
-        </Button>
+
+        {/* Workflow: none -> Generate Terraform */}
+        {deploymentStage === 'none' && onGenerateTerraform && (
+          <Button 
+            onClick={onGenerateTerraform}
+            disabled={isGeneratingTerraform}
+            className="bg-primary hover:bg-primary/90"
+          >
+            {isGeneratingTerraform ? (
+              <>
+                <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                Generating...
+              </>
+            ) : (
+              <>
+                <Code className="w-4 h-4 mr-2" />
+                Generate Terraform
+              </>
+            )}
+          </Button>
+        )}
+        
+        {/* Workflow: generated -> Regenerate + Preview Code + Plan */}
+        {deploymentStage === 'generated' && (
+          <>
+            {onGenerateTerraform && (
+              <Button 
+                variant="outline"
+                onClick={onGenerateTerraform}
+                disabled={isGeneratingTerraform}
+              >
+                {isGeneratingTerraform ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <Code className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </>
+                )}
+              </Button>
+            )}
+            {onViewCode && (
+              <Button 
+                variant="outline"
+                onClick={onViewCode}
+              >
+                <FileCode className="w-4 h-4 mr-2" />
+                Preview Code
+              </Button>
+            )}
+            {onPlanOrApply && (
+              <Button 
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={onPlanOrApply}
+              >
+                <Rocket className="w-4 h-4 mr-2" />
+                Plan
+              </Button>
+            )}
+          </>
+        )}
+        
+        {/* Workflow: planned -> Regenerate + Preview Code + View Preview (Diff) + Apply */}
+        {deploymentStage === 'planned' && (
+          <>
+            {onGenerateTerraform && (
+              <Button 
+                variant="outline"
+                onClick={onGenerateTerraform}
+                disabled={isGeneratingTerraform}
+              >
+                {isGeneratingTerraform ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <Code className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </>
+                )}
+              </Button>
+            )}
+            {onViewCode && (
+              <Button 
+                variant="outline"
+                onClick={onViewCode}
+              >
+                <FileCode className="w-4 h-4 mr-2" />
+                Preview Code
+              </Button>
+            )}
+            {onViewPreview && (
+              <Button 
+                variant="outline"
+                onClick={onViewPreview}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Diff
+              </Button>
+            )}
+            {onPlanOrApply && (
+              <Button 
+                className="bg-green-600 hover:bg-green-700 text-white"
+                onClick={onPlanOrApply}
+              >
+                <CheckCircle className="w-4 h-4 mr-2" />
+                Apply
+              </Button>
+            )}
+          </>
+        )}
+        
+        {/* Workflow: applying -> Applying... */}
+        {deploymentStage === 'applying' && (
+          <Button 
+            className="bg-green-600 text-white"
+            disabled
+          >
+            <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+            Applying...
+          </Button>
+        )}
+        
+        {/* Workflow: applied -> Regenerate + Deployed */}
+        {deploymentStage === 'applied' && (
+          <>
+            {onGenerateTerraform && (
+              <Button 
+                variant="outline"
+                onClick={onGenerateTerraform}
+                disabled={isGeneratingTerraform}
+              >
+                {isGeneratingTerraform ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Regenerating...
+                  </>
+                ) : (
+                  <>
+                    <Code className="w-4 h-4 mr-2" />
+                    Regenerate
+                  </>
+                )}
+              </Button>
+            )}
+            <Button 
+              className="bg-green-600 text-white"
+              disabled
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Deployed
+            </Button>
+          </>
+        )}
       </div>
     </div>
   )

@@ -13,15 +13,13 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
-import { CloudServiceNode } from "@/components/canvas/cloud-service-node"
-import { ConnectionEdge } from "@/components/canvas/connection-edge"
+import { CloudServiceNode } from "@/components/cloud-service-node"
 import type { Block, Connection, BlockTemplate } from "@/types/infrastructure"
 import {
   ReactFlow,
   Background,
   BackgroundVariant,
   ConnectionMode,
-  ConnectionLineType,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -32,8 +30,8 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
-// Map block types to icon paths
-const iconMap: Record<string, string> = {
+// Map block types to AWS icon paths
+const awsIconMap: Record<string, string> = {
   // Compute
   ec2: "/aws/Arch_Amazon-EC2_64.svg",
   lambda: "/aws/Arch_AWS-Lambda_64.svg",
@@ -80,37 +78,17 @@ const iconMap: Record<string, string> = {
   securityscanner: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
   autoscaler: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   backupmanager: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
-  
-  // Supabase
-  supabase_database: "/supabase/database.svg",
-  supabase_auth: "/supabase/auth.svg",
-  
-  // Stripe
-  stripe_payment: "/stripe/stripe.svg",
-}
-
-// Helper function to determine provider from block type
-const getProviderFromBlockType = (type: string): string => {
-  if (type.startsWith('supabase_')) return 'supabase'
-  if (type.startsWith('stripe_')) return 'stripe'
-  // Default to AWS for all other types
-  return 'aws'
 }
 
 const defaultEdgeOptions = {
-  style: { strokeWidth: 4, stroke: '#a855f7' }, // Purple, thicker
-  type: 'custom',
+  style: { strokeWidth: 3, stroke: 'hsl(var(--primary))' },
+  type: 'smoothstep',
   animated: false,
 }
 
 // Define nodeTypes outside component to avoid recreation warnings
 const nodeTypes = {
   cloudService: CloudServiceNode,
-}
-
-// Define edgeTypes outside component to avoid recreation warnings
-const edgeTypes = {
-  custom: ConnectionEdge,
 }
 
 interface CanvasProps {
@@ -150,8 +128,8 @@ export function Canvas({
     data: {
       id: block.type,
       name: block.name,
-      provider: getProviderFromBlockType(block.type),
-      icon: iconMap[block.type] || '☁️',
+      provider: 'aws',
+      icon: awsIconMap[block.type] || '☁️',
       config: block.config,
       onDelete: () => onDeleteBlock(block.id),
     },
@@ -162,8 +140,6 @@ export function Canvas({
     id: conn.id,
     source: conn.from,
     target: conn.to,
-    sourceHandle: conn.sourceHandle || null,
-    targetHandle: conn.targetHandle || null,
     ...defaultEdgeOptions,
   }))
 
@@ -182,8 +158,8 @@ export function Canvas({
       data: {
         id: block.type,
         name: block.name,
-        provider: getProviderFromBlockType(block.type),
-        icon: iconMap[block.type] || '☁️',
+        provider: 'aws',
+        icon: awsIconMap[block.type] || '☁️',
         config: block.config,
         onDelete: () => onDeleteBlock(block.id),
       },
@@ -197,8 +173,6 @@ export function Canvas({
       id: conn.id,
       source: conn.from,
       target: conn.to,
-      sourceHandle: conn.sourceHandle || null,
-      targetHandle: conn.targetHandle || null,
       ...defaultEdgeOptions,
     }))
     
@@ -220,25 +194,15 @@ export function Canvas({
   // Handle new connections
   const onConnect: OnConnect = useCallback((connection: FlowConnection) => {
     if (connection.source && connection.target) {
-      // Create connection with custom type and preserved handle IDs
-      const connectionWithType = {
-        ...connection,
-        type: 'custom',
-      }
-      
       // First, immediately update ReactFlow's edge state for instant visual feedback
-      setEdges((eds) => addEdge(connectionWithType, eds))
+      setEdges((eds) => addEdge(connection, eds))
       
       // Then notify parent component for persistence
-      // Include handle IDs so they persist across reloads
       const newConnection: Connection = {
         id: `conn-${Date.now()}`,
         from: connection.source,
         to: connection.target,
-        sourceHandle: connection.sourceHandle,
-        targetHandle: connection.targetHandle,
       }
-      
       onAddConnection(newConnection)
     }
   }, [setEdges, onAddConnection])
@@ -302,7 +266,7 @@ export function Canvas({
   // nodeTypes is now defined outside the component
 
   return (
-    <div
+    <div 
       ref={canvasRef}
       className="relative flex-1 overflow-hidden"
       onDrop={handleDrop}
@@ -317,52 +281,30 @@ export function Canvas({
         onEdgeClick={handleEdgeClick}
         onNodeClick={(_, node) => onSelectBlock(node.id)}
         nodeTypes={nodeTypes}
-        edgeTypes={edgeTypes}
-        connectionLineType={ConnectionLineType.Bezier}
-        connectionMode={ConnectionMode.Loose}
         defaultEdgeOptions={defaultEdgeOptions}
         className="canvas-grid w-full h-full"
         onPaneClick={() => onSelectBlock(null)}
         minZoom={0.5}
         maxZoom={2}
+        connectionMode={ConnectionMode.Loose}
         connectOnClick={false}
         elementsSelectable={true}
         nodesConnectable={true}
         nodesDraggable={true}
         proOptions={{ hideAttribution: true }}
       >
-        <Background
-          variant={BackgroundVariant.Dots}
-          gap={20}
-          size={1}
-          bgColor="#2C2C2C"
-        />
+        <Background variant={BackgroundVariant.Dots} gap={20} size={1} bgColor="#2C2C2C"/>
       </ReactFlow>
 
       {/* Custom Zoom Controls */}
       <div className="absolute bottom-4 right-4 flex gap-2 bg-card border border-border rounded-lg p-1 shadow-lg z-10">
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleZoomOut}
-          className="hover:bg-accent"
-        >
+        <Button size="icon" variant="ghost" onClick={handleZoomOut} className="hover:bg-accent">
           <Minus className="w-4 h-4" />
         </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleZoomReset}
-          className="hover:bg-accent"
-        >
+        <Button size="icon" variant="ghost" onClick={handleZoomReset} className="hover:bg-accent">
           <Maximize2 className="w-4 h-4" />
         </Button>
-        <Button
-          size="icon"
-          variant="ghost"
-          onClick={handleZoomIn}
-          className="hover:bg-accent"
-        >
+        <Button size="icon" variant="ghost" onClick={handleZoomIn} className="hover:bg-accent">
           <Plus className="w-4 h-4" />
         </Button>
       </div>
@@ -384,16 +326,12 @@ export function Canvas({
       </div>
 
       {/* Delete Connection Confirmation Dialog */}
-      <AlertDialog
-        open={!!connectionToDelete}
-        onOpenChange={() => setConnectionToDelete(null)}
-      >
+      <AlertDialog open={!!connectionToDelete} onOpenChange={() => setConnectionToDelete(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Delete Connection</AlertDialogTitle>
             <AlertDialogDescription>
-              Are you sure you want to delete this connection? This action
-              cannot be undone.
+              Are you sure you want to delete this connection? This action cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -408,5 +346,5 @@ export function Canvas({
         </AlertDialogContent>
       </AlertDialog>
     </div>
-  );
+  )
 }

@@ -13,6 +13,8 @@ import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-
 import { OpenProjectDialog, type Project } from "@/components/dialogs/open-project-dialog";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { AIReviewDialog } from "@/components/dialogs/ai-review-dialog";
+import { PlanPreviewDialog } from "@/components/dialogs/plan-preview-dialog";
+import { TerraformPreviewDialog } from "@/components/dialogs/terraform-preview";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";
@@ -61,6 +63,21 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
   ]);
   const [chatInput, setChatInput] = useState('');
   const [isChatLoading, setIsChatLoading] = useState(false);
+
+  // Terraform Generation State
+  const [terraformCode, setTerraformCode] = useState<string | null>(null);
+  const [deploymentStage, setDeploymentStage] = useState<'none' | 'generated' | 'planned' | 'applying' | 'applied'>('none');
+  const [planOutput, setPlanOutput] = useState<string | null>(null);
+  const [isGeneratingTerraform, setIsGeneratingTerraform] = useState(false);
+  const [showTerraformCode, setShowTerraformCode] = useState(false);
+  const [showPlanPreview, setShowPlanPreview] = useState(false);
+
+  // Console Output State
+  const [showConsoleOutput, setShowConsoleOutput] = useState(false);
+  const [consoleOutput, setConsoleOutput] = useState('');
+  const [consoleTitle, setConsoleTitle] = useState('');
+  const [consoleStatus, setConsoleStatus] = useState<'running' | 'success' | 'error' | 'idle'>('idle');
+  const [isConsoleRunning, setIsConsoleRunning] = useState(false);
 
   const [history, setHistory] = useState<HistoryState[]>([
     { blocks: [], connections: [] },
@@ -320,32 +337,212 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
     }
   };
 
-  const handleDeploy = () => {
-    // Clear previous error
-    setDeploymentError(null);
+  // Handle Terraform Plan
+  const handlePlan = async () => {
+    if (!terraformCode) {
+      setDeploymentError("No Terraform code generated. Please generate Terraform first.");
+      return;
+    }
 
-    // Check if there are any blocks to deploy
-    if (blocks.length === 0) {
+    // Get credentials for the current provider
+    const provider = currentProject?.provider || 'aws';
+    const credentials = CredentialManager.getCredentials(provider);
+
+    if (!credentials) {
       setDeploymentError(
-        "No infrastructure defined. Please add some services to deploy."
+        `No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`
       );
       return;
     }
 
-    // Check if AWS credentials are configured
-    if (!CredentialManager.hasCredentials("aws")) {
+    // Setup console output
+    setConsoleTitle('Terraform Plan');
+    setConsoleOutput('Initializing Terraform plan...\n\n');
+    setConsoleStatus('running');
+    setIsConsoleRunning(true);
+    setShowConsoleOutput(true);
+
+    try {
+      toast({
+        title: "📋 Running Terraform Plan",
+        description: "Analyzing infrastructure changes...",
+        duration: 2000,
+      });
+
+      console.log('🚀 Calling terraform plan API...');
+      setConsoleOutput(prev => prev + '$ terraform plan\n\n');
+      
+      const response = await fetch('/api/terraform/plan', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          terraformCode,
+          provider,
+          credentials: {
+            [provider]: credentials
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to run Terraform plan');
+      }
+
+      const data = await response.json();
+      console.log('✅ Plan result:', data);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Terraform plan failed');
+      }
+
+      // Display the full output in console
+      const fullOutput = data.output || data.plan?.planOutput || '';
+      setConsoleOutput(prev => prev + fullOutput + '\n\n');
+
+      // Set the plan output
+      setPlanOutput(fullOutput || 'Plan completed successfully');
+      setDeploymentStage('planned');
+      setConsoleStatus('success');
+
+      // Show statistics if available
+      const stats = data.plan;
+      const statsMessage = stats 
+        ? `Plan: ${stats.toAdd} to add, ${stats.toChange} to change, ${stats.toDestroy} to destroy`
+        : 'Review the changes in the preview dialog';
+
+      setConsoleOutput(prev => prev + `\n✅ ${statsMessage}\n`);
+
+      toast({
+        title: "✅ Plan Complete",
+        description: statsMessage,
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error('Failed to run plan:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to run Terraform plan';
+      
+      setConsoleOutput(prev => prev + `\n❌ Error: ${errorMessage}\n`);
+      setConsoleStatus('error');
+      
+      setDeploymentError(errorMessage);
+      toast({
+        title: "❌ Plan Failed",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setIsConsoleRunning(false);
+    }
+  };
+
+  // Handle Terraform Apply
+  const handleApply = async () => {
+    if (!terraformCode || !planOutput) {
+      setDeploymentError("Please run Plan first before applying.");
+      return;
+    }
+
+    // Get credentials for the current provider
+    const provider = currentProject?.provider || 'aws';
+    const credentials = CredentialManager.getCredentials(provider);
+
+    if (!credentials) {
       setDeploymentError(
-        "No AWS credentials configured. Please configure credentials in settings."
+        `No ${provider.toUpperCase()} credentials configured. Please configure credentials in settings.`
       );
       return;
     }
 
-    // If credentials are configured, proceed with deployment
-    toast({
-      title: "🚀 Deployment started",
-      description: "Your infrastructure deployment has been initiated.",
-      duration: 3000,
-    });
+    // Setup console output
+    setConsoleTitle('Terraform Apply');
+    setConsoleOutput('Initializing Terraform apply...\n\n');
+    setConsoleStatus('running');
+    setIsConsoleRunning(true);
+    setShowConsoleOutput(true);
+
+    try {
+      setDeploymentStage('applying');
+      
+      toast({
+        title: "🚀 Applying Changes",
+        description: `Deploying infrastructure to ${provider.toUpperCase()}...`,
+        duration: 2000,
+      });
+
+      console.log('🚀 Calling terraform apply API...');
+      setConsoleOutput(prev => prev + '$ terraform apply -auto-approve\n\n');
+      
+      const response = await fetch('/api/terraform/apply', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          terraformCode,
+          provider,
+          autoApprove: true,
+          credentials: {
+            [provider]: credentials
+          }
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to apply Terraform changes');
+      }
+
+      const data = await response.json();
+      console.log('✅ Apply result:', data);
+
+      if (!data.success) {
+        throw new Error(data.error || 'Terraform apply failed');
+      }
+
+      // Display the full output in console
+      const fullOutput = data.output || '';
+      setConsoleOutput(prev => prev + fullOutput + '\n\n');
+
+      setDeploymentStage('applied');
+      setConsoleStatus('success');
+      setConsoleOutput(prev => prev + '\n✅ Infrastructure successfully deployed!\n');
+
+      toast({
+        title: "✅ Deployment Complete",
+        description: `Your infrastructure has been successfully deployed to ${provider.toUpperCase()}`,
+        duration: 4000,
+      });
+    } catch (error) {
+      console.error('Failed to apply:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Failed to apply Terraform changes';
+      
+      setConsoleOutput(prev => prev + `\n❌ Error: ${errorMessage}\n`);
+      setConsoleStatus('error');
+      
+      setDeploymentError(errorMessage);
+      toast({
+        title: "❌ Apply Failed",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 4000,
+      });
+      setDeploymentStage('planned'); // Revert to planned state
+    } finally {
+      setIsConsoleRunning(false);
+    }
+  };
+
+  // Unified handler for Plan or Apply based on deployment stage
+  const handlePlanOrApply = () => {
+    if (deploymentStage === 'generated') {
+      handlePlan();
+    } else if (deploymentStage === 'planned') {
+      handleApply();
+    }
   };
 
   // Handle ASI:One Chat Messages
@@ -387,6 +584,83 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
       }]);
     } finally {
       setIsChatLoading(false);
+    }
+  };
+
+  // Handle Terraform Generation with Claude
+  const handleGenerateTerraform = async () => {
+    // Clear previous error and plan output
+    setDeploymentError(null);
+    setPlanOutput(null);
+
+    // Check if there are any blocks to deploy
+    if (blocks.length === 0) {
+      setDeploymentError(
+        "No infrastructure defined. Please add some services to generate Terraform code."
+      );
+      return;
+    }
+
+    const isRegeneration = terraformCode !== null;
+    
+    try {
+      setIsGeneratingTerraform(true);
+      
+      toast({
+        title: isRegeneration ? "🔄 Regenerating Terraform" : "⚙️ Generating Terraform",
+        description: "Claude is generating your infrastructure code...",
+        duration: 2000,
+      });
+
+      // Call the API to generate Terraform code using Claude
+      const response = await fetch('/api/terraform/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          blocks,
+          connections,
+          provider: currentProject?.provider || 'aws'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate Terraform code');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success || !data.terraformCode) {
+        throw new Error('Invalid response from Terraform generation API');
+      }
+
+      // Save the generated Terraform code and update deployment stage
+      setTerraformCode(data.terraformCode);
+      setDeploymentStage('generated');
+
+      toast({
+        title: isRegeneration ? "✅ Terraform Regenerated" : "✅ Terraform Generated",
+        description: isRegeneration 
+          ? "Your infrastructure code has been updated. Review the changes before planning."
+          : `Successfully generated ${data.terraformCode.length} characters of Terraform code`,
+        duration: 3000,
+      });
+
+    } catch (error) {
+      console.error('Failed to generate Terraform:', error);
+      setDeploymentError(
+        error instanceof Error ? error.message : 'Failed to generate Terraform code'
+      );
+      toast({
+        title: "❌ Generation Failed",
+        description: error instanceof Error ? error.message : 'Failed to generate Terraform code',
+        variant: "destructive",
+        duration: 4000,
+      });
+    } finally {
+      setIsGeneratingTerraform(false);
     }
   };
 
@@ -594,12 +868,17 @@ variable "environment" {
         <div className="flex-1 flex flex-col">
           <Toolbar
             onSave={handleSave}
-            onDeploy={handleDeploy}
+            onGenerateTerraform={handleGenerateTerraform}
+            onPlanOrApply={handlePlanOrApply}
             onUndo={handleUndo}
             onRedo={handleRedo}
             onCodeReview={handleCodeReview}
+            onViewCode={() => setShowTerraformCode(true)}
+            onViewPreview={() => setShowPlanPreview(true)}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < history.length - 1}
+            deploymentStage={deploymentStage}
+            isGeneratingTerraform={isGeneratingTerraform}
           />
 
           <ReactFlowProvider>
@@ -756,6 +1035,20 @@ variable "environment" {
         analysis={aiReviewAnalysis}
         isLoading={isAIReviewLoading}
         error={aiReviewError}
+      />
+      
+      {/* Terraform Code Preview Dialog */}
+      <TerraformPreviewDialog
+        open={showTerraformCode}
+        onOpenChange={setShowTerraformCode}
+        terraformCode={terraformCode}
+      />
+
+      {/* Plan Preview Dialog */}
+      <PlanPreviewDialog
+        open={showPlanPreview}
+        onOpenChange={setShowPlanPreview}
+        planOutput={planOutput}
       />
     </div>
   );

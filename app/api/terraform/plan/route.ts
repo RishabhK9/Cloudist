@@ -1,15 +1,29 @@
 import { spawn } from 'child_process'
-import { existsSync } from 'fs'
+import { existsSync, mkdirSync, writeFileSync, rmSync } from 'fs'
+import { join } from 'path'
+import { tmpdir } from 'os'
+import { randomUUID } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
 import { CredentialManager } from '@/lib/credential-manager'
 
 export async function POST(request: NextRequest) {
+  let tempDir: string | null = null
+  
   try {
     const body = await request.json()
-    const { workingDirectory, planFile, credentials } = body
+    const { terraformCode, provider = 'aws', credentials, workingDirectory, planFile } = body
 
     // Set AWS credentials as environment variables if provided
     const env = { ...process.env }
+    
+    // Setup Terraform plugin cache directory for faster init
+    const pluginCacheDir = join(tmpdir(), 'terraform-plugin-cache')
+    if (!existsSync(pluginCacheDir)) {
+      mkdirSync(pluginCacheDir, { recursive: true })
+      console.log('📦 Created Terraform plugin cache directory:', pluginCacheDir)
+    }
+    env.TF_PLUGIN_CACHE_DIR = pluginCacheDir
+    
     if (credentials?.aws) {
       // Validate AWS credentials format
       const validationErrors = CredentialManager.validateAWSCredentials(credentials.aws)
@@ -29,21 +43,55 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🚀 Terraform Plan API called:', {
+      hasTerraformCode: !!terraformCode,
       workingDirectory,
       planFile,
+      provider,
       timestamp: new Date().toISOString()
     })
 
-    if (!workingDirectory) {
-      console.error('❌ Missing working directory')
+    let actualWorkingDir = workingDirectory
+
+    // If terraformCode is provided, create a temporary directory
+    if (terraformCode) {
+      tempDir = join(tmpdir(), `terraform-${randomUUID()}`)
+      mkdirSync(tempDir, { recursive: true })
+      console.log('📁 Created temporary directory:', tempDir)
+
+      // Write Terraform code to main.tf
+      const mainTfPath = join(tempDir, 'main.tf')
+      writeFileSync(mainTfPath, terraformCode, 'utf-8')
+      console.log('✅ Written main.tf')
+
+      // Run terraform init with optimization flags for faster execution
+      console.log('🔧 Running terraform init...')
+      const initArgs = [
+        '-upgrade=false',      // Don't check for newer provider versions
+        '-backend=false',      // Skip backend initialization (not needed for plan)
+      ]
+      const initResult = await executeTerraformCommand('init', initArgs, tempDir, env)
+      
+      if (!initResult.success) {
+        console.error('❌ Terraform init failed:', initResult.error)
+        return NextResponse.json(
+          { 
+            error: 'Terraform initialization failed', 
+            details: initResult.error,
+            output: initResult.output 
+          },
+          { status: 500 }
+        )
+      }
+      console.log('✅ Terraform init successful')
+
+      actualWorkingDir = tempDir
+    } else if (!workingDirectory) {
+      console.error('❌ Missing working directory and terraform code')
       return NextResponse.json(
-        { error: 'Working directory is required' },
+        { error: 'Either working directory or terraform code is required' },
         { status: 400 }
       )
-    }
-
-    // Check if working directory exists
-    if (!existsSync(workingDirectory)) {
+    } else if (!existsSync(workingDirectory)) {
       console.error('❌ Working directory does not exist:', workingDirectory)
       return NextResponse.json(
         { error: `Working directory does not exist: ${workingDirectory}` },
@@ -53,7 +101,7 @@ export async function POST(request: NextRequest) {
 
     const args = planFile ? ['-out', planFile] : []
     console.log('🚀 Executing terraform plan command with args:', args)
-    const result = await executeTerraformCommand('plan', args, workingDirectory, env)
+    const result = await executeTerraformCommand('plan', args, actualWorkingDir, env)
     
     console.log('📊 Terraform plan result:', {
       success: result.success,
@@ -103,6 +151,16 @@ export async function POST(request: NextRequest) {
       { error: 'Failed to run terraform plan' },
       { status: 500 }
     )
+  } finally {
+    // Cleanup temporary directory
+    if (tempDir && existsSync(tempDir)) {
+      try {
+        rmSync(tempDir, { recursive: true, force: true })
+        console.log('🧹 Cleaned up temporary directory:', tempDir)
+      } catch (cleanupError) {
+        console.error('⚠️ Failed to cleanup temporary directory:', cleanupError)
+      }
+    }
   }
 }
 
