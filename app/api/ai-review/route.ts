@@ -48,9 +48,7 @@ export async function POST(request: NextRequest) {
     }
 
     console.log('🔍 Starting code review for', Object.keys(terraformFiles).length, 'files');
-    console.log('📄 File contents preview:', Object.entries(terraformFiles).map(([name, content]) => 
-      `${name}: ${typeof content === 'string' ? content.substring(0, 100) : 'invalid'}...`
-    ));
+    console.log('📄 Files:', Object.keys(terraformFiles));
 
     let analysis;
     let reviewMethod = 'unknown';
