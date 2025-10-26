@@ -78,6 +78,18 @@ const defaultEdgeOptions = {
 let nodeId = 0
 const getId = () => `node_${nodeId++}`
 
+// Helper function to determine provider from service ID
+const getProviderFromServiceId = (serviceId: string): string => {
+  if (serviceId.startsWith('supabase_') || ['database', 'auth'].includes(serviceId)) return 'supabase'
+  if (serviceId.startsWith('stripe_') || ['payment'].includes(serviceId)) return 'stripe'
+  // Azure services
+  if (['vm'].includes(serviceId)) return 'azure'
+  // GCP services
+  if (['compute'].includes(serviceId)) return 'gcp'
+  // Default to AWS for all other services
+  return 'aws'
+}
+
 export function InfrastructureCanvas({ provider, onBack, projectId }: InfrastructureCanvasProps) {
   const [nodes, setNodes, onNodesChange] = useNodesState<Node>([])
   const [edges, setEdges, onEdgesChange] = useEdgesState<any>([])
@@ -347,7 +359,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         position,
         data: {
           ...service,
-          provider: provider,
+          provider: getProviderFromServiceId(service.id),
           config: service.defaultConfig || {},
           terraformType: service.terraformType,
         },
@@ -1267,7 +1279,7 @@ provider "aws" {
             
             {/* Providers Pane - Bottom Section - Takes up flex space */}
             <div className="flex flex-col overflow-auto" style={{ flex: '2 1 0', minHeight: '200px' }}>
-              <ProvidersPane currentProvider={provider} />
+              <ProvidersPane currentProvider={provider} nodes={nodes} />
             </div>
           </aside>
         )}

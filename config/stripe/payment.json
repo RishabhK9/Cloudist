@@ -1,0 +1,85 @@
+{
+  "id": "payment",
+  "name": "Payment Processing",
+  "icon": "/stripe/stripe.svg",
+  "category": "Payment",
+  "description": "Stripe payment processing and subscription management",
+  "terraformType": "",
+  "defaultConfig": {
+    "name": "payment-gateway",
+    "currency": "usd",
+    "payment_methods": ["card", "bank_transfer"],
+    "enable_subscriptions": true,
+    "enable_invoicing": false,
+    "capture_method": "automatic",
+    "webhook_events": ["payment_intent.succeeded", "payment_intent.failed"]
+  },
+  "configSchema": {
+    "name": {
+      "type": "string",
+      "label": "Integration Name",
+      "description": "Name for this Stripe integration",
+      "required": true,
+      "validation": {
+        "pattern": "^[a-z0-9-]+$"
+      }
+    },
+    "currency": {
+      "type": "select",
+      "label": "Default Currency",
+      "description": "Default currency for transactions",
+      "options": ["usd", "eur", "gbp", "cad", "aud", "jpy", "inr"],
+      "default": "usd",
+      "required": true
+    },
+    "payment_methods": {
+      "type": "multiselect",
+      "label": "Payment Methods",
+      "description": "Enabled payment methods",
+      "options": ["card", "bank_transfer", "sepa_debit", "ideal", "sofort", "giropay", "apple_pay", "google_pay"],
+      "default": ["card"],
+      "required": true
+    },
+    "enable_subscriptions": {
+      "type": "boolean",
+      "label": "Enable Subscriptions",
+      "description": "Enable recurring subscription payments",
+      "default": true,
+      "required": false
+    },
+    "enable_invoicing": {
+      "type": "boolean",
+      "label": "Enable Invoicing",
+      "description": "Enable invoice generation and management",
+      "default": false,
+      "required": false
+    },
+    "capture_method": {
+      "type": "select",
+      "label": "Capture Method",
+      "description": "When to capture payments",
+      "options": ["automatic", "manual"],
+      "default": "automatic",
+      "required": true
+    },
+    "webhook_events": {
+      "type": "multiselect",
+      "label": "Webhook Events",
+      "description": "Stripe events to subscribe to",
+      "options": [
+        "payment_intent.succeeded",
+        "payment_intent.failed",
+        "charge.succeeded",
+        "charge.failed",
+        "customer.subscription.created",
+        "customer.subscription.updated",
+        "customer.subscription.deleted",
+        "invoice.payment_succeeded",
+        "invoice.payment_failed"
+      ],
+      "default": ["payment_intent.succeeded", "payment_intent.failed"],
+      "required": false
+    }
+  }
+}
+

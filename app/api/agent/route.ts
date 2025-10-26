@@ -1,12 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
+import Anthropic from '@anthropic-ai/sdk'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client server-side (fallback)
+// Initialize Anthropic client for Claude (used for Terraform generation in another endpoint)
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
+})
+
+// Initialize OpenAI client as fallback
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
 
-// Fetch.ai ASI:One Configuration
+// Fetch.ai ASI:One Configuration (used for AI chat)
 const ASI_ONE_API_KEY = process.env.ASI1_API_KEY || process.env.FETCH_AI_API_KEY || process.env.ASI_ONE_API_KEY
 const ASI_ONE_ENDPOINT = process.env.ASI1_ENDPOINT || 'https://api.asi1.ai/v1/chat/completions'
 
@@ -30,7 +36,7 @@ When making decisions:
 Always respond in a helpful, clear manner and explain your reasoning process.`
 
 // ASI:One API call function
-async function callASIOne(messages: any[], functions: any[]) {
+async function callASIOne(messages: any[]) {
   try {
     const response = await fetch(ASI_ONE_ENDPOINT, {
       method: 'POST',
@@ -60,12 +66,12 @@ async function callASIOne(messages: any[], functions: any[]) {
   }
 }
 
-// Agent function definitions
-const agentFunctions = {
-  createInfrastructure: {
+// Agent tool definitions for both ASI:One and Claude
+const agentTools = [
+  {
     name: "create_infrastructure",
     description: "Create and deploy cloud infrastructure based on user requirements",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         infrastructureType: {
@@ -80,10 +86,10 @@ const agentFunctions = {
       required: ["infrastructureType", "requirements"]
     }
   },
-  analyzeArchitecture: {
+  {
     name: "analyze_architecture", 
     description: "Analyze and provide insights on cloud architecture",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         analysisType: {
@@ -98,10 +104,10 @@ const agentFunctions = {
       required: ["analysisType"]
     }
   },
-  troubleshootIssues: {
+  {
     name: "troubleshoot_issues",
     description: "Help debug and resolve infrastructure problems",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         issueType: {
@@ -116,10 +122,10 @@ const agentFunctions = {
       required: ["issueType"]
     }
   },
-  provideBestPractices: {
+  {
     name: "provide_best_practices",
     description: "Share relevant cloud architecture best practices and recommendations",
-    parameters: {
+    input_schema: {
       type: "object",
       properties: {
         topic: {
@@ -134,7 +140,7 @@ const agentFunctions = {
       required: ["topic"]
     }
   }
-}
+] as const
 
 // Available functions mapping
 const functionMap: Record<string, Function> = {
@@ -165,10 +171,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Message is required' }, { status: 400 })
     }
 
-    const messages = [
-      {
-        role: "system",
-        content: `You are Rex, an expert cloud infrastructure consultant and DevOps engineer. You help users with cloud infrastructure questions, architecture design, and deployment guidance.
+    const systemPrompt = `You are Rex, an expert cloud infrastructure consultant and DevOps engineer. You help users with cloud infrastructure questions, architecture design, and deployment guidance.
 
 CURRENT CANVAS STATE: ${canvasContext || 'No canvas context available'}
 
@@ -209,40 +212,58 @@ InfraBlocks currently supports these core AWS services:
 Additional services are planned for future releases. You can discuss any cloud service or concept, but can only create the supported services on the canvas.
 
 Be flexible and responsive to what the user actually needs rather than forcing them into predefined categories.`
-      },
-      ...(conversationHistory || []).slice(-10), // Keep last 10 messages for context
+
+    // Format messages for ASI:One
+    const asiMessages = [
+      { role: 'system', content: ASI_SYSTEM_PROMPT },
+      ...(conversationHistory || []).slice(-10).filter((msg: any) => msg.role !== 'system'),
       {
         role: "user",
         content: message
       }
     ]
 
-    // ONLY use Fetch.ai ASI:One - no fallback
-    if (!ASI_ONE_API_KEY) {
-      return NextResponse.json({
-        error: 'Fetch.ai ASI:One API key not configured. Please add ASI1_API_KEY to .env.local',
-        response: 'Please configure your Fetch.ai API key in .env.local file.'
-      }, { status: 500 })
+    // Try Fetch.ai ASI:One first, fallback to OpenAI if not configured
+    let messageResponse: any
+    
+    if (ASI_ONE_API_KEY) {
+      console.log('🤖 API Route: Calling ASI:One API...')
+      const asiResponse = await callASIOne(asiMessages)
+      
+      if (asiResponse) {
+        const choice = asiResponse.choices[0]
+        messageResponse = choice.message
+      } else {
+        console.log('⚠️ ASI:One failed, falling back to OpenAI...')
+      }
     }
     
-    const asiResponse = await callASIOne(
-      messages,
-      Object.values(agentFunctions)
-    )
-    
-    if (!asiResponse) {
-      return NextResponse.json({
-        error: 'Fetch.ai ASI:One request failed.',
-        response: 'Sorry, I encountered an error. Please try again.'
-      }, { status: 500 })
+    // Fallback to OpenAI if ASI:One not configured or failed
+    if (!messageResponse && process.env.OPENAI_API_KEY) {
+      console.log('🤖 API Route: Using OpenAI fallback...')
+      const openaiMessages = asiMessages.map((msg: any) => ({
+        role: msg.role === 'system' ? 'system' : msg.role,
+        content: msg.content
+      }))
+      
+      const openaiResponse = await openai.chat.completions.create({
+        model: 'gpt-4',
+        messages: openaiMessages,
+        temperature: 0.7,
+        max_tokens: 1500,
+      })
+      
+      messageResponse = openaiResponse.choices[0].message
     }
     
-    const response = asiResponse
+    if (!messageResponse) {
+      return NextResponse.json({
+        error: 'No AI service configured. Please add ASI1_API_KEY or OPENAI_API_KEY to .env.local',
+        response: 'Please configure an AI API key in .env.local file.'
+      }, { status: 500 })
+    }
 
-    const choice = response.choices[0]
-    const messageResponse = choice.message
-
-    // Check if the model wants to call a tool
+    // Check if the model wants to call a function (ASI:One uses tool_calls format)
     if (messageResponse.tool_calls && messageResponse.tool_calls.length > 0) {
       const toolCall = messageResponse.tool_calls[0]
       if (toolCall.type === 'function') {
@@ -259,13 +280,15 @@ Be flexible and responsive to what the user actually needs rather than forcing t
     }
 
     // Return regular response if no function call
+    console.log('💬 API Route: Returning text response')
     const textResponse = {
       type: 'text',
-      response: messageResponse.content || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
+      content: messageResponse.content || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
     }
     return NextResponse.json(textResponse)
   } catch (error) {
-    console.error('❌ Agent error:', error instanceof Error ? error.message : error)
+    console.error('❌ ASI:One agent error:', error instanceof Error ? error.message : error)
+    console.log('🔍 DEBUG: Error stack:', error instanceof Error ? error.stack : 'No stack trace')
     return NextResponse.json({
       error: 'Failed to process message',
       details: error instanceof Error ? error.message : 'Unknown error'

@@ -19,6 +19,8 @@ import {
   Container,
   Layers,
   Cloud,
+  CreditCard,
+  UserCheck,
 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { ScrollArea } from "@/components/ui/scroll-area"
@@ -78,6 +80,13 @@ const awsIconMap: Record<string, string> = {
   securityscanner: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
   autoscaler: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   backupmanager: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
+  
+  // Supabase
+  supabase_database: "/supabase/database.svg",
+  supabase_auth: "/supabase/auth.svg",
+  
+  // Stripe
+  stripe_payment: "/stripe/stripe.svg",
 }
 
 const blockTemplates: BlockTemplate[] = [
@@ -191,6 +200,53 @@ const blockTemplates: BlockTemplate[] = [
     category: "networking",
     defaultConfig: { retentionDays: 7 },
   },
+  
+  // Supabase
+  {
+    type: "supabase_database",
+    name: "Supabase Database",
+    icon: awsIconMap.supabase_database,
+    category: "supabase",
+    defaultConfig: { 
+      project_name: "cloudist-db",
+      region: "us-east-1",
+      plan: "free",
+      db_password: "TheCloudist$Project",
+      postgres_version: "Latest (Auto)"
+    },
+  },
+  {
+    type: "supabase_auth",
+    name: "Supabase Auth",
+    icon: awsIconMap.supabase_auth,
+    category: "supabase",
+    defaultConfig: { 
+      project_name: "cloudist-auth",
+      providers: ["email", "google", "github"],
+      email_confirmation: true,
+      password_min_length: 8,
+      jwt_expiry: "3600",
+      enable_signup: true,
+      enable_mfa: false
+    },
+  },
+  
+  // Stripe
+  {
+    type: "stripe_payment",
+    name: "Stripe Payment",
+    icon: "/stripe/stripe.svg",
+    category: "stripe",
+    defaultConfig: { 
+      name: "payment-gateway",
+      currency: "usd",
+      payment_methods: ["card", "bank_transfer"],
+      enable_subscriptions: true,
+      enable_invoicing: false,
+      capture_method: "automatic",
+      webhook_events: ["payment_intent.succeeded", "payment_intent.failed"]
+    },
+  },
 ]
 
 const iconMap: Record<string, any> = {
@@ -207,6 +263,8 @@ const iconMap: Record<string, any> = {
   Container,
   Layers,
   Cloud,
+  CreditCard,
+  UserCheck,
 }
 
 interface ComponentPaletteProps {
@@ -233,12 +291,12 @@ export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
 
       <ScrollArea className="flex-1 h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
         <div className="p-2">
-          <Accordion type="multiple" defaultValue={["aws"]} className="w-full">
+          <Accordion type="multiple" defaultValue={["aws", "supabase", "stripe"]} className="w-full">
             {/* AWS Provider */}
             <AccordionItem value="aws" className="border-b-0">
               <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
                 <div className="flex items-center gap-2">
-                  <img src="/aws/logo.png" alt="AWS" className="w-5 h-5 object-contain" />
+                  <img src="/aws/aws.svg" alt="AWS" className="w-5 h-5 object-contain" />
                   <span>AWS</span>
                 </div>
               </AccordionTrigger>
@@ -292,6 +350,90 @@ export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
                     )
                   })}
                 </Accordion>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Supabase Provider */}
+            <AccordionItem value="supabase" className="border-b-0">
+              <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  <img src="/supabase/supabase-logo-icon.svg" alt="Supabase" className="w-5 h-5 object-contain" />
+                  <span>Supabase</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-2">
+                <div className="ml-2 space-y-1">
+                  {blockTemplates
+                    .filter((template) => template.category === "supabase")
+                    .map((template) => {
+                      const isImageIcon = template.icon.startsWith('/')
+                      return (
+                        <div
+                          key={template.type}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, template)}
+                          className="flex items-center gap-2 p-2 rounded-md bg-card hover:bg-accent cursor-move transition-colors group"
+                        >
+                          {isImageIcon ? (
+                            <img 
+                              src={template.icon} 
+                              alt={template.name}
+                              className="w-4 h-4 object-contain"
+                            />
+                          ) : (
+                            (() => {
+                              const Icon = iconMap[template.icon]
+                              return <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                            })()
+                          )}
+                          <span className="text-xs text-card-foreground flex-1">{template.name}</span>
+                          <div className="w-1 h-4 bg-muted-foreground/20 rounded group-hover:bg-primary/50" />
+                        </div>
+                      )
+                    })}
+                </div>
+              </AccordionContent>
+            </AccordionItem>
+
+            {/* Stripe Provider */}
+            <AccordionItem value="stripe" className="border-b-0">
+              <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
+                <div className="flex items-center gap-2">
+                  <img src="/stripe/stripe.svg" alt="Stripe" className="w-5 h-5 object-contain" />
+                  <span>Stripe</span>
+                </div>
+              </AccordionTrigger>
+              <AccordionContent className="pb-2">
+                <div className="ml-2 space-y-1">
+                  {blockTemplates
+                    .filter((template) => template.category === "stripe")
+                    .map((template) => {
+                      const isImageIcon = template.icon.startsWith('/')
+                      return (
+                        <div
+                          key={template.type}
+                          draggable
+                          onDragStart={(e) => handleDragStart(e, template)}
+                          className="flex items-center gap-2 p-2 rounded-md bg-card hover:bg-accent cursor-move transition-colors group"
+                        >
+                          {isImageIcon ? (
+                            <img 
+                              src={template.icon} 
+                              alt={template.name}
+                              className="w-4 h-4 object-contain"
+                            />
+                          ) : (
+                            (() => {
+                              const Icon = iconMap[template.icon]
+                              return <Icon className="w-4 h-4 text-muted-foreground group-hover:text-primary" />
+                            })()
+                          )}
+                          <span className="text-xs text-card-foreground flex-1">{template.name}</span>
+                          <div className="w-1 h-4 bg-muted-foreground/20 rounded group-hover:bg-primary/50" />
+                        </div>
+                      )
+                    })}
+                </div>
               </AccordionContent>
             </AccordionItem>
 

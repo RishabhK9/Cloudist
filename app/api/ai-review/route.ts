@@ -1,8 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
-import OpenAI from 'openai';
+import Anthropic from '@anthropic-ai/sdk';
 
-const openai = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
+const anthropic = new Anthropic({
+  apiKey: process.env.ANTHROPIC_API_KEY,
 });
 
 export async function POST(request: NextRequest) {
@@ -60,32 +60,28 @@ Respond with valid JSON only:
 
     // Create a timeout promise
     const timeoutPromise = new Promise((_, reject) => {
-      setTimeout(() => reject(new Error('OpenAI request timeout')), 20000); // 20 second timeout
+      setTimeout(() => reject(new Error('Claude request timeout')), 30000); // 30 second timeout
     });
 
-    const completionPromise = openai.chat.completions.create({
-      model: "gpt-4.1-mini",
+    const completionPromise = anthropic.messages.create({
+      model: "claude-3-5-sonnet-20241022",
+      max_tokens: 4096,
+      temperature: 0.3,
+      system: "You are a Terraform code reviewer. Analyze the code and respond with valid JSON only. Be direct and practical in your feedback.",
       messages: [
-        {
-          role: "system",
-          content: "You are a Terraform code reviewer. Analyze the code and respond with valid JSON only. Be direct and practical in your feedback."
-        },
         {
           role: "user",
           content: prompt
         }
       ],
-      temperature: 0.3,
-      max_tokens: 1500,
-      response_format: { type: "json_object" },
     });
 
     const completion = await Promise.race([completionPromise, timeoutPromise]) as any;
 
-    const response = completion.choices[0]?.message?.content;
+    const response = completion.content[0]?.text;
     
     if (!response) {
-      throw new Error('No response from OpenAI');
+      throw new Error('No response from Claude');
     }
 
     // Parse and validate the JSON response

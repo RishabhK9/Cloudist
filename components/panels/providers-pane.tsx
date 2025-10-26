@@ -25,9 +25,9 @@ const PROVIDERS: Provider[] = [
     id: "aws",
     name: "AWS",
     displayName: "Amazon Web Services",
-    icon: "☁️",
+    icon: "/aws/aws.svg",
     status: "connected",
-    consoleUrl: "https://console.aws.amazon.com"
+    consoleUrl: "https://console.aws.amazon.com",
   },
   {
     id: "gcp",
@@ -35,7 +35,7 @@ const PROVIDERS: Provider[] = [
     displayName: "Google Cloud Platform",
     icon: "🌩️",
     status: "disconnected",
-    consoleUrl: "https://console.cloud.google.com"
+    consoleUrl: "https://console.cloud.google.com",
   },
   {
     id: "azure",
@@ -43,24 +43,69 @@ const PROVIDERS: Provider[] = [
     displayName: "Microsoft Azure",
     icon: "☁️",
     status: "disconnected",
-    consoleUrl: "https://portal.azure.com"
+    consoleUrl: "https://portal.azure.com",
   },
   {
     id: "supabase",
     name: "Supabase",
     displayName: "Supabase",
-    icon: "⚡",
+    icon: "/supabase/supabase-logo-icon.svg",
     status: "disconnected",
-    consoleUrl: "https://supabase.com/dashboard"
-  }
-]
+    consoleUrl: "https://supabase.com/dashboard",
+  },
+  {
+    id: "stripe",
+    name: "Stripe",
+    displayName: "Stripe",
+    icon: "/stripe/stripe.svg",
+    status: "disconnected",
+    consoleUrl: "https://dashboard.stripe.com",
+  },
+];
 
 interface ProvidersPaneProps {
   currentProvider?: string
+  nodes?: any[]
 }
 
-export function ProvidersPane({ currentProvider }: ProvidersPaneProps) {
+export function ProvidersPane({ currentProvider, nodes = [] }: ProvidersPaneProps) {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
+
+  // Helper function to determine provider from block type
+  const getProviderFromBlockType = (type: string): string | null => {
+    if (type.startsWith('supabase_')) return 'supabase'
+    if (type.startsWith('stripe_')) return 'stripe'
+    // AWS types (all other current types are AWS)
+    const awsTypes = ['ec2', 'lambda', 'fargate', 'kubernetes', 'container', 's3', 'rds', 'dynamodb', 
+                      'redis', 'ebs', 'vpc', 'subnet', 'internet_gateway', 'security_group', 
+                      'loadbalancer', 'apigateway', 'api_gateway', 'cloudfront', 'securitygroup',
+                      'iam', 'secrets', 'secrets_manager', 'cognito', 'waf', 'sqs', 'step_functions',
+                      'cloudwatch', 'costmonitor', 'securityscanner', 'autoscaler', 'backupmanager']
+    if (awsTypes.includes(type)) return 'aws'
+    return null
+  }
+
+  // Extract unique providers from nodes on the diagram
+  const activeProviders = new Set(
+    nodes
+      .map((node) => {
+        // Handle ReactFlow nodes (with data.provider)
+        if (node.data?.provider) {
+          return node.data.provider
+        }
+        // Handle legacy blocks (with type field)
+        if (node.type) {
+          return getProviderFromBlockType(node.type)
+        }
+        return null
+      })
+      .filter((provider) => provider)
+  )
+
+  // Filter providers to only show those with resources on the diagram
+  const visibleProviders = PROVIDERS.filter((provider) => 
+    activeProviders.has(provider.id)
+  )
 
   const handleProviderClick = (providerId: string) => {
     setExpandedProvider(expandedProvider === providerId ? null : providerId)
@@ -90,14 +135,21 @@ export function ProvidersPane({ currentProvider }: ProvidersPaneProps) {
           <Cloud className="w-4 h-4 text-primary" />
           <span className="text-sm font-medium">Providers</span>
           <Badge variant="secondary" className="text-xs">
-            {PROVIDERS.length}
+            {visibleProviders.length}
           </Badge>
         </div>
       </div>
 
       {/* Content - Expandable List */}
       <div className="flex-1 overflow-y-auto min-h-0">
-        {PROVIDERS.map((provider) => {
+        {visibleProviders.length === 0 ? (
+          <div className="flex items-center justify-center h-full px-4 py-8 text-center">
+            <div className="text-sm text-muted-foreground">
+              No providers yet. Add resources from the Components panel to see providers here.
+            </div>
+          </div>
+        ) : (
+          visibleProviders.map((provider) => {
           const isExpanded = expandedProvider === provider.id
           const isActive = currentProvider === provider.id
           
@@ -114,7 +166,13 @@ export function ProvidersPane({ currentProvider }: ProvidersPaneProps) {
                       isExpanded ? "rotate-90" : ""
                     }`}
                   />
-                  <div className="text-xl">{provider.icon}</div>
+                  <div className="text-xl">
+                    {provider.icon.startsWith('/') ? (
+                      <img src={provider.icon} alt={provider.name} className="w-6 h-6 object-contain" />
+                    ) : (
+                      provider.icon
+                    )}
+                  </div>
                   <div className="flex-1">
                     <div className="flex items-center gap-2">
                       <span className="text-sm font-medium">
@@ -181,7 +239,8 @@ export function ProvidersPane({ currentProvider }: ProvidersPaneProps) {
               )}
             </div>
           )
-        })}
+        })
+        )}
       </div>
     </div>
   )

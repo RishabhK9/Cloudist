@@ -57,7 +57,7 @@ function InfrastructureCanvasWrapper({
   onBack,
   projectId,
 }: {
-  provider: "aws" | "gcp" | "azure"
+  provider: "aws" | "gcp" | "azure" | "supabase"
   onBack: () => void
   projectId: string
 }) {
@@ -78,11 +78,11 @@ export function ProjectView({
   onUpdateProject,
   onDeleteProject,
 }: ProjectViewProps) {
-  const [selectedProvider, setSelectedProvider] = useState<"aws" | "gcp" | "azure" | null>(project.provider || null)
+  const [selectedProvider, setSelectedProvider] = useState<"aws" | "gcp" | "azure" | "supabase" | null>(project.provider || null)
   const [showCanvas, setShowCanvas] = useState(!!project.provider)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
-  const handleProviderSelect = (provider: "aws" | "gcp" | "azure") => {
+  const handleProviderSelect = (provider: "aws" | "gcp" | "azure" | "supabase") => {
     setSelectedProvider(provider)
     onUpdateProject({
       ...project,

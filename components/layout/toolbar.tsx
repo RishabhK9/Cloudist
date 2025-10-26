@@ -1,19 +1,36 @@
 "use client"
 
-import { Save, Rocket, Undo2, Redo2 } from "lucide-react"
+import { Save, Code, Rocket, Undo2, Redo2, CheckCircle, Eye, FileCode, Loader2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 
 interface ToolbarProps {
   onSave: () => void
-  onDeploy: () => void
+  onGenerateTerraform: () => void
+  onPlanOrApply: () => void
   onUndo: () => void
   onRedo: () => void
+  onViewPreview?: () => void
+  onViewCode?: () => void
   canUndo?: boolean
   canRedo?: boolean
+  deploymentStage: 'none' | 'generated' | 'planned' | 'applying' | 'applied'
+  isGeneratingTerraform?: boolean
 }
 
-export function Toolbar({ onSave, onDeploy, onUndo, onRedo, canUndo, canRedo }: ToolbarProps) {
+export function Toolbar({ 
+  onSave, 
+  onGenerateTerraform, 
+  onPlanOrApply, 
+  onUndo, 
+  onRedo, 
+  onViewPreview,
+  onViewCode,
+  canUndo, 
+  canRedo,
+  deploymentStage,
+  isGeneratingTerraform 
+}: ToolbarProps) {
   // Detect if user is on Mac - use state to avoid hydration mismatch
   const [isMac, setIsMac] = useState(false)
 
@@ -58,10 +75,94 @@ export function Toolbar({ onSave, onDeploy, onUndo, onRedo, canUndo, canRedo }: 
 
       {/* Right Section */}
       <div className="flex items-center gap-2 flex-1 justify-end">
-        <Button className="bg-primary hover:bg-primary/90" onClick={onDeploy}>
-          <Rocket className="w-4 h-4 mr-2" />
-          Deploy
+        <Button 
+          variant="outline"
+          onClick={onGenerateTerraform}
+          disabled={deploymentStage === 'applying' || isGeneratingTerraform}
+        >
+          {isGeneratingTerraform ? (
+            <>
+              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+              Generating...
+            </>
+          ) : (
+            <>
+              <Code className="w-4 h-4 mr-2" />
+              {deploymentStage === 'generated' || deploymentStage === 'planned' ? 'Regenerate Terraform' : 'Generate Terraform'}
+            </>
+          )}
         </Button>
+        
+        {deploymentStage === 'generated' && (
+          <>
+            {onViewCode && (
+              <Button 
+                variant="outline"
+                onClick={onViewCode}
+              >
+                <FileCode className="w-4 h-4 mr-2" />
+                View Code
+              </Button>
+            )}
+            <Button 
+              className="bg-blue-600 hover:bg-blue-700"
+              onClick={onPlanOrApply}
+            >
+              <Rocket className="w-4 h-4 mr-2" />
+              Plan
+            </Button>
+          </>
+        )}
+        
+        {deploymentStage === 'planned' && (
+          <>
+            {onViewCode && (
+              <Button 
+                variant="outline"
+                onClick={onViewCode}
+              >
+                <FileCode className="w-4 h-4 mr-2" />
+                View Code
+              </Button>
+            )}
+            {onViewPreview && (
+              <Button 
+                variant="outline"
+                onClick={onViewPreview}
+              >
+                <Eye className="w-4 h-4 mr-2" />
+                View Preview
+              </Button>
+            )}
+            <Button 
+              className="bg-green-600 hover:bg-green-700"
+              onClick={onPlanOrApply}
+            >
+              <CheckCircle className="w-4 h-4 mr-2" />
+              Apply
+            </Button>
+          </>
+        )}
+        
+        {deploymentStage === 'applying' && (
+          <Button 
+            className="bg-green-600"
+            disabled
+          >
+            <Rocket className="w-4 h-4 mr-2 animate-spin" />
+            Applying...
+          </Button>
+        )}
+        
+        {deploymentStage === 'applied' && (
+          <Button 
+            className="bg-green-600"
+            disabled
+          >
+            <CheckCircle className="w-4 h-4 mr-2" />
+            Deployed
+          </Button>
+        )}
       </div>
     </div>
   )

@@ -104,12 +104,46 @@ export function CreateNewProjectDialog({
             <Label htmlFor="provider">Cloud Provider</Label>
             <Select value={provider} onValueChange={(value) => setProvider(value as "aws" | "gcp" | "azure")}>
               <SelectTrigger id="provider">
-                <SelectValue />
+                <SelectValue>
+                  {provider === "aws" && (
+                    <div className="flex items-center gap-2">
+                      <img src="/aws/aws.svg" alt="AWS" className="w-4 h-4 object-contain" />
+                      <span>Amazon Web Services (AWS)</span>
+                    </div>
+                  )}
+                  {provider === "gcp" && (
+                    <div className="flex items-center gap-2">
+                      <span>🌩️</span>
+                      <span>Google Cloud Platform (GCP)</span>
+                    </div>
+                  )}
+                  {provider === "azure" && (
+                    <div className="flex items-center gap-2">
+                      <span>☁️</span>
+                      <span>Microsoft Azure</span>
+                    </div>
+                  )}
+                </SelectValue>
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="aws">☁️ Amazon Web Services (AWS)</SelectItem>
-                <SelectItem value="gcp">🌩️ Google Cloud Platform (GCP)</SelectItem>
-                <SelectItem value="azure">☁️ Microsoft Azure</SelectItem>
+                <SelectItem value="aws">
+                  <div className="flex items-center gap-2">
+                    <img src="/aws/aws.svg" alt="AWS" className="w-4 h-4 object-contain" />
+                    <span>Amazon Web Services (AWS)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="gcp">
+                  <div className="flex items-center gap-2">
+                    <span>🌩️</span>
+                    <span>Google Cloud Platform (GCP)</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="azure">
+                  <div className="flex items-center gap-2">
+                    <span>☁️</span>
+                    <span>Microsoft Azure</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
