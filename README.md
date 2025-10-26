@@ -7,7 +7,7 @@ Cloudist is a next-generation infrastructure design tool that combines visual dr
 ## ✨ Features
 
 - 🤖 **AI Infrastructure Assistant (Rex)** - Powered by Claude 3.5 Sonnet
-- 🐰 **CodeRabbit Integration** - Professional Terraform code review via CLI
+- 🐰 **CodeRabbit Integration** - Professional Terraform code review via REST API, CLI, or OpenAI fallback
 - 🎨 **Visual Canvas** - Drag-and-drop infrastructure designer
 - 🌐 **Multi-Cloud Support** - AWS, Azure, GCP services
 - 📦 **Third-Party Integrations** - Supabase, Stripe, and more
@@ -15,28 +15,53 @@ Cloudist is a next-generation infrastructure design tool that combines visual dr
 
 ## 🚀 Quick Start
 
-See [SETUP.md](./SETUP.md) for detailed setup instructions.
-
 ```bash
-# Install dependencies
+# 1. Install dependencies
 npm install
 
-# Set up environment variables
+# 2. Set up environment variables
 cp .env.example .env.local
+```
 
-# Install CodeRabbit CLI
-curl -fsSL https://cli.coderabbit.ai/install.sh | sh
-coderabbit auth login
+Edit `.env.local` and add your API keys:
 
-# Run development server
+```env
+# Required for AI code review (choose one or more):
+CODERABBIT_API_KEY=your_coderabbit_api_key_here  # Recommended - Get from https://app.coderabbit.ai/settings/api-keys
+OPENAI_API_KEY=your_openai_api_key_here          # Fallback option
+
+# Optional - for CodeRabbit CLI method:
+# Install CLI: curl -fsSL https://cli.coderabbit.ai/install.sh | sh
+# Then login: coderabbit auth login
+```
+
+```bash
+# 3. Run development server
 npm run dev
 ```
 
+### Code Review Integration
+
+Cloudist uses a **three-tier fallback strategy** for code review:
+
+1. **CodeRabbit REST API** (Recommended) - Fast, reliable, no CLI needed
+   - Get API key from https://app.coderabbit.ai/settings/api-keys
+   - Add to `.env.local` as `CODERABBIT_API_KEY`
+
+2. **CodeRabbit CLI** (Alternative) - Local review using CLI
+   - Install: `curl -fsSL https://cli.coderabbit.ai/install.sh | sh`
+   - Login: `coderabbit auth login`
+
+3. **OpenAI GPT-4** (Fallback) - If CodeRabbit is unavailable
+   - Add `OPENAI_API_KEY` to `.env.local`
+
+The system automatically tries each method in order until one succeeds.
+
 ## 🏆 Technologies
 
-- **AI**: Claude 3.5 Sonnet (Anthropic)
-- **Code Review**: CodeRabbit CLI
-- **Frontend**: Next.js 14, React, TailwindCSS
+- **AI**: Claude 3.5 Sonnet (Anthropic), OpenAI GPT-4
+- **Code Review**: CodeRabbit REST API / CLI
+- **Frontend**: Next.js 14, React, TailwindCSS, shadcn/ui
 - **Infrastructure**: React Flow, Terraform
 
 ## 📄 License

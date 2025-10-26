@@ -77,12 +77,12 @@ export function Toolbar({
 
       {/* Right Section */}
       <div className="flex items-center gap-2 flex-1 justify-end">
-        {onAIReview && (
+        {/* Code Review Button - Only visible after Terraform is generated */}
+        {onAIReview && (deploymentStage === 'generated' || deploymentStage === 'planned' || deploymentStage === 'applied') && (
           <Button 
             variant="default"
             size="default"
             onClick={onAIReview}
-            disabled={deploymentStage === 'applying'}
             className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold shadow-lg"
             style={{ minWidth: '140px' }}
           >

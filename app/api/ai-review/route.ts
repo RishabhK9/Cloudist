@@ -5,13 +5,16 @@ import fs from 'fs/promises';
 import path from 'path';
 import os from 'os';
 import OpenAI from 'openai';
+import { CodeRabbitClient, convertCodeRabbitToUIFormat } from '@/lib/coderabbit-client';
 
 const execAsync = promisify(exec);
 
-// Initialize OpenAI client
+// Initialize clients
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY || '',
 });
+
+const coderabbitClient = new CodeRabbitClient();
 
 export async function POST(request: NextRequest) {
   console.log('🚀 AI Review API called');
@@ -44,112 +47,124 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    console.log('🔍 Starting CodeRabbit review for', Object.keys(terraformFiles).length, 'files');
-    console.log('📄 File contents preview:', Object.entries(terraformFiles).map(([name, content]) => 
-      `${name}: ${typeof content === 'string' ? content.substring(0, 100) : 'invalid'}...`
-    ));
+    console.log('🔍 Starting code review for', Object.keys(terraformFiles).length, 'files');
+    console.log('📄 Files:', Object.keys(terraformFiles));
 
-    // Create temporary directory for review
-    const tempDir = path.join(os.tmpdir(), `terraform-review-${Date.now()}`);
-    console.log('📁 Creating temp directory:', tempDir);
-    await fs.mkdir(tempDir, { recursive: true });
-    console.log('✅ Temp directory created');
+    let analysis;
+    let reviewMethod = 'unknown';
 
-    try {
-      // Write Terraform files to temp directory
-      console.log('📝 Writing Terraform files to temp directory...');
-      for (const [filename, content] of Object.entries(terraformFiles)) {
-        const filePath = path.join(tempDir, filename as string);
-        console.log(`  - Writing ${filename} (${typeof content === 'string' ? content.length : 0} chars)`);
-        await fs.writeFile(filePath, content as string, 'utf-8');
-        console.log(`  ✅ Wrote ${filename}`);
-      }
-
-      // Initialize git repo (CodeRabbit needs it)
-      console.log('🔧 Initializing Git repository...');
-      await execAsync('git init', { cwd: tempDir });
-      console.log('✅ Git init complete');
-      
-      await execAsync('git config user.email "cloudist@coderabbit.ai"', { cwd: tempDir });
-      console.log('✅ Git config email set');
-      
-      await execAsync('git config user.name "Cloudist Review Bot"', { cwd: tempDir });
-      console.log('✅ Git config name set');
-      
-      // Add and commit files to make them reviewable
-      console.log('📦 Adding files to git...');
-      const gitAddResult = await execAsync('git add .', { cwd: tempDir });
-      console.log('✅ Git add complete:', gitAddResult.stdout || 'no output');
-      
-      console.log('💾 Committing files...');
-      const gitCommitResult = await execAsync('git commit -m "Initial Terraform configuration"', { cwd: tempDir });
-      console.log('✅ Git commit complete:', gitCommitResult.stdout?.substring(0, 100) || 'no output');
-
-      // Check if CodeRabbit is installed
-      console.log('🔍 Checking if CodeRabbit CLI is installed...');
-      let useCodeRabbit = false;
+    // Strategy 1: Try CodeRabbit REST API (preferred)
+    if (coderabbitClient.isConfigured()) {
       try {
+        console.log('🤖 [Strategy 1] Trying CodeRabbit REST API...');
+        const files = Object.entries(terraformFiles).map(([filename, content]) => ({
+          path: filename,
+          content: content as string,
+          language: 'terraform',
+        }));
+
+        const coderabbitResponse = await coderabbitClient.reviewCode({
+          files,
+          options: {
+            security: true,
+            performance: true,
+            bestPractices: true,
+          },
+        });
+
+        console.log('✅ CodeRabbit REST API review completed');
+        analysis = convertCodeRabbitToUIFormat(coderabbitResponse);
+        analysis.reviewedBy = 'CodeRabbit API';
+        analysis.reviewMethod = 'REST API';
+        reviewMethod = 'CodeRabbit REST API';
+      } catch (apiError) {
+        console.warn('⚠️ CodeRabbit REST API failed:', apiError instanceof Error ? apiError.message : apiError);
+        console.log('   Falling back to next strategy...');
+      }
+    } else {
+      console.log('⚠️ CodeRabbit API key not configured, skipping REST API');
+    }
+
+    // Strategy 2: Try CodeRabbit CLI (if REST API failed or not configured)
+    if (!analysis) {
+      const tempDir = path.join(os.tmpdir(), `terraform-review-${Date.now()}`);
+      
+      try {
+        console.log('🤖 [Strategy 2] Trying CodeRabbit CLI...');
+        console.log('📁 Creating temp directory:', tempDir);
+        await fs.mkdir(tempDir, { recursive: true });
+
+        // Write Terraform files to temp directory
+        console.log('📝 Writing Terraform files...');
+        for (const [filename, content] of Object.entries(terraformFiles)) {
+          const filePath = path.join(tempDir, filename as string);
+          await fs.writeFile(filePath, content as string, 'utf-8');
+        }
+
+        // Initialize git repo (CodeRabbit CLI needs it)
+        await execAsync('git init', { cwd: tempDir });
+        await execAsync('git config user.email "cloudist@coderabbit.ai"', { cwd: tempDir });
+        await execAsync('git config user.name "Cloudist Review Bot"', { cwd: tempDir });
+        await execAsync('git add .', { cwd: tempDir });
+        await execAsync('git commit -m "Initial Terraform configuration"', { cwd: tempDir });
+
+        // Check if CodeRabbit CLI is installed
         const { stdout: versionOutput } = await execAsync('which coderabbit');
         console.log('✅ CodeRabbit CLI found at:', versionOutput.trim());
-        useCodeRabbit = true;
-      } catch (whichError) {
-        console.log('⚠️ CodeRabbit CLI not found, falling back to OpenAI API');
-      }
 
-      let analysis;
-      
-      if (useCodeRabbit) {
-        console.log('🤖 Running CodeRabbit CLI...');
-        console.log('   Command: coderabbit --plain --type committed --no-color');
-        console.log('   Working directory:', tempDir);
-
-        // Run CodeRabbit CLI in plain mode
+        // Run CodeRabbit CLI
         const startTime = Date.now();
-        const { stdout, stderr } = await execAsync(
+        const { stdout } = await execAsync(
           'coderabbit --plain --type committed --no-color',
           {
             cwd: tempDir,
-            timeout: 60000, // 60 second timeout
-            maxBuffer: 1024 * 1024 * 10, // 10MB buffer
+            timeout: 60000,
+            maxBuffer: 1024 * 1024 * 10,
           }
         );
         const duration = Date.now() - startTime;
 
-        console.log('✅ CodeRabbit review completed in', duration, 'ms');
-        console.log('📊 CodeRabbit stderr:', stderr || '(empty)');
-        console.log('📊 CodeRabbit stdout length:', stdout?.length || 0);
-        console.log('📊 CodeRabbit stdout preview:', stdout?.substring(0, 200) || '(empty)');
-
-        // Parse CodeRabbit plain text output
-        console.log('🔍 Parsing CodeRabbit output...');
+        console.log('✅ CodeRabbit CLI review completed in', duration, 'ms');
         analysis = parseCodeRabbitOutput(stdout || '', terraformFiles);
-        console.log('✅ Analysis complete:', {
-          score: analysis.overallScore,
-          issueCount: analysis.issues?.length || 0,
-          summary: analysis.summary?.substring(0, 100)
-        });
-      } else {
-        // Use OpenAI API as fallback
-        console.log('🤖 Using OpenAI API for infrastructure review...');
-        analysis = await reviewWithOpenAI(terraformFiles);
-        console.log('✅ OpenAI analysis complete:', {
-          score: analysis.overallScore,
-          issueCount: analysis.issues?.length || 0,
-          summary: analysis.summary?.substring(0, 100)
-        });
-      }
+        analysis.reviewedBy = 'CodeRabbit CLI';
+        analysis.reviewMethod = 'CLI';
+        reviewMethod = 'CodeRabbit CLI';
 
-      return NextResponse.json(analysis);
-
-    } finally {
-      // Cleanup: Remove temp directory
-      try {
+        // Cleanup temp directory
         await fs.rm(tempDir, { recursive: true, force: true });
-        console.log('🧹 Cleaned up temp directory');
-      } catch (cleanupError) {
-        console.error('Failed to cleanup temp directory:', cleanupError);
+      } catch (cliError) {
+        console.warn('⚠️ CodeRabbit CLI failed:', cliError instanceof Error ? cliError.message : cliError);
+        console.log('   Falling back to OpenAI...');
+        
+        // Cleanup temp directory if it was created
+        try {
+          await fs.rm(tempDir, { recursive: true, force: true });
+        } catch (cleanupError) {
+          console.warn('⚠️ Failed to clean up temp directory:', cleanupError instanceof Error ? cleanupError.message : cleanupError);
+        }
       }
     }
+
+    // Strategy 3: Fallback to OpenAI (if both CodeRabbit methods failed)
+    if (!analysis) {
+      try {
+        console.log('🤖 [Strategy 3] Using OpenAI API as final fallback...');
+        analysis = await reviewWithOpenAI(terraformFiles);
+        analysis.reviewedBy = 'OpenAI GPT-4';
+        analysis.reviewMethod = 'OpenAI API';
+        reviewMethod = 'OpenAI API';
+        console.log('✅ OpenAI analysis complete');
+      } catch (openaiError) {
+        console.error('❌ All review methods failed');
+        throw openaiError;
+      }
+    }
+
+    console.log('✅ Review completed using:', reviewMethod);
+    console.log('   Score:', analysis.overallScore);
+    console.log('   Issues:', analysis.issues?.length || 0);
+
+    return NextResponse.json(analysis);
 
   } catch (error) {
     console.error('❌ CodeRabbit Review Error:', error);
@@ -172,21 +187,9 @@ export async function POST(request: NextRequest) {
           summary: 'CodeRabbit CLI is not installed on this system',
           strengths: [],
           issues: [],
-          recommendations: [
-            {
-              category: 'setup',
-              title: 'Install CodeRabbit CLI',
-              description: 'Visit https://docs.coderabbit.ai/cli/overview to install the CodeRabbit CLI',
-              impact: 'high'
-            }
-          ],
-          costOptimization: {
-            estimatedMonthlyCost: 'N/A',
-            suggestions: []
-          },
           securityAnalysis: {
             securityScore: 0,
-            findings: []
+            findings: ['CodeRabbit CLI is required for security analysis']
           }
         },
         { status: 503 }
@@ -201,14 +204,9 @@ export async function POST(request: NextRequest) {
         summary: 'Review failed due to an error',
         strengths: [],
         issues: [],
-        recommendations: [],
-        costOptimization: {
-          estimatedMonthlyCost: 'N/A',
-          suggestions: []
-        },
         securityAnalysis: {
           securityScore: 0,
-          findings: []
+          findings: ['Review failed - manual security check recommended']
         }
       },
       { status: 500 }
@@ -226,7 +224,7 @@ async function reviewWithOpenAI(terraformFiles: Record<string, string>) {
 
   console.log('📝 [reviewWithOpenAI] Prepared context:', filesContext.length, 'characters');
 
-  const prompt = `You are an expert infrastructure engineer and security analyst. Review the following Terraform configuration and provide a comprehensive analysis.
+  const prompt = `You are an expert infrastructure engineer and security analyst. Review the following Terraform configuration with a strong focus on security vulnerabilities and best practices.
 
 ${filesContext}
 
@@ -238,37 +236,43 @@ Please analyze this infrastructure and provide your review in the following JSON
   "issues": [
     {
       "severity": "high|medium|low",
-      "category": "security|cost|best-practices|performance",
+      "category": "security|best-practices|performance",
       "description": "<issue description>",
       "recommendation": "<how to fix>",
       "file": "<filename>",
       "line": 0
     }
   ],
-  "recommendations": [
-    {
-      "category": "security|cost|performance|reliability",
-      "title": "<recommendation title>",
-      "description": "<detailed description>",
-      "impact": "high|medium|low"
-    }
-  ],
-  "costOptimization": {
-    "estimatedMonthlyCost": "<cost estimate or range>",
-    "suggestions": ["<suggestion 1>", "<suggestion 2>", ...]
-  },
   "securityAnalysis": {
     "securityScore": <number 0-100>,
-    "findings": ["<finding 1>", "<finding 2>", ...]
+    "findings": ["<security finding 1>", "<security finding 2>", ...]
   }
 }
 
-Focus on:
-- Security best practices (encryption, access control, network security)
-- Cost optimization opportunities
-- Scalability and reliability concerns
-- Terraform best practices
-- Resource configuration issues`;
+CRITICAL FOCUS AREAS:
+1. Security Vulnerabilities:
+   - Hardcoded secrets or credentials
+   - Unencrypted data at rest or in transit
+   - Overly permissive security groups or IAM policies
+   - Missing encryption for sensitive resources (databases, storage, etc.)
+   - Public accessibility of private resources
+   - Missing authentication/authorization
+   - SQL injection or command injection vulnerabilities
+   - Missing security headers or configurations
+
+2. Best Practices:
+   - Resource naming and tagging
+   - High availability and fault tolerance
+   - Backup and disaster recovery
+   - Logging and monitoring
+   - Terraform code structure and modularity
+
+3. Performance:
+   - Resource sizing and optimization
+   - Network latency considerations
+   - Caching strategies
+
+Provide detailed, actionable security findings with specific line numbers and file references.`;
 
   try {
     console.log('🤖 [reviewWithOpenAI] Calling OpenAI API...');
@@ -277,7 +281,7 @@ Focus on:
       messages: [
         {
           role: 'system',
-          content: 'You are an expert infrastructure engineer specializing in cloud infrastructure, security, and cost optimization. You provide detailed, actionable reviews of Terraform configurations.'
+          content: 'You are an expert infrastructure security analyst and cloud engineer. You specialize in identifying security vulnerabilities, misconfigurations, and best practices violations in Terraform configurations. Provide detailed, actionable security reviews with specific line numbers and remediation steps.'
         },
         {
           role: 'user',
@@ -305,7 +309,7 @@ Focus on:
     console.log('✅ [reviewWithOpenAI] Review complete:', {
       score: analysis.overallScore,
       issueCount: analysis.issues?.length || 0,
-      recommendationCount: analysis.recommendations?.length || 0
+      securityScore: analysis.securityAnalysis?.securityScore || 0
     });
 
     return analysis;
@@ -322,18 +326,6 @@ Focus on:
         'Infrastructure resources are properly defined'
       ],
       issues: [],
-      recommendations: [
-        {
-          category: 'setup',
-          title: 'Enable AI Review',
-          description: 'Configure OpenAI API key to enable detailed infrastructure analysis',
-          impact: 'medium'
-        }
-      ],
-      costOptimization: {
-        estimatedMonthlyCost: 'Unable to estimate without detailed analysis',
-        suggestions: []
-      },
       securityAnalysis: {
         securityScore: 70,
         findings: ['Manual security review recommended']
@@ -369,11 +361,6 @@ function parseCodeRabbitOutput(
     summary: '',
     strengths: [] as string[],
     issues: [] as any[],
-    recommendations: [] as any[],
-    costOptimization: {
-      estimatedMonthlyCost: 'Variable based on usage',
-      suggestions: [] as string[]
-    },
     securityAnalysis: {
       securityScore: 90,
       findings: [] as string[]
@@ -460,12 +447,6 @@ function parseCodeRabbitOutput(
         });
       }
       
-      // Detect cost-related items
-      if (lowerLine.includes('cost') || lowerLine.includes('expensive') || 
-          lowerLine.includes('pricing')) {
-        analysis.costOptimization.suggestions.push(line);
-      }
-      
       // Detect positive feedback
       if (lowerLine.includes('good') || lowerLine.includes('well') || 
           lowerLine.includes('correct')) {
@@ -508,25 +489,6 @@ function parseCodeRabbitOutput(
     } else {
       analysis.summary = `📋 CodeRabbit found ${issueCount} suggestion${issueCount > 1 ? 's' : ''} for improving your Terraform configuration`;
     }
-  }
-  
-  // Add recommendations based on findings
-  if (analysis.securityAnalysis.findings.length > 0) {
-    analysis.recommendations.push({
-      category: 'security',
-      title: 'Address Security Findings',
-      description: 'CodeRabbit identified security-related concerns that should be reviewed',
-      impact: 'high'
-    });
-  }
-  
-  if (analysis.costOptimization.suggestions.length > 0) {
-    analysis.recommendations.push({
-      category: 'cost',
-      title: 'Review Cost Optimization Suggestions',
-      description: 'Consider the cost-related recommendations from CodeRabbit',
-      impact: 'medium'
-    });
   }
   
   console.log('📊 [parseCodeRabbitOutput] Parsing complete!');
