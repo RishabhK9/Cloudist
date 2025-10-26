@@ -1,21 +1,27 @@
-"use client"
+"use client";
 
-import { Trash2, FileCode } from "lucide-react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { Label } from "@/components/ui/label"
-import { ScrollArea } from "@/components/ui/scroll-area"
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import type { Block, Connection } from "@/types/infrastructure"
-import { useState } from "react"
+import { Trash2, FileCode, ChevronRight } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import type { Block, Connection } from "@/types/infrastructure";
+import { useState } from "react";
 
 interface PropertiesPanelProps {
-  block: Block | undefined
-  blocks?: Block[]
-  connections?: Connection[]
-  onUpdateBlock: (id: string, updates: Partial<Block>) => void
-  onDeleteBlock: (id: string) => void
+  block: Block | undefined;
+  blocks?: Block[];
+  connections?: Connection[];
+  onUpdateBlock: (id: string, updates: Partial<Block>) => void;
+  onDeleteBlock: (id: string) => void;
 }
 
 function generateTerraformCode(block: Block): string {
@@ -28,7 +34,7 @@ function generateTerraformCode(block: Block): string {
   tags = {
     Name = "${block.name}"
   }
-}`
+}`;
     case "lambda":
       return `resource "aws_lambda_function" "${block.id}" {
   function_name = "${block.name}"
@@ -37,7 +43,7 @@ function generateTerraformCode(block: Block): string {
   
   handler = "index.handler"
   role    = aws_iam_role.lambda_role.arn
-}`
+}`;
     case "rds":
       return `resource "aws_db_instance" "${block.id}" {
   identifier     = "${block.id}"
@@ -49,7 +55,7 @@ function generateTerraformCode(block: Block): string {
   tags = {
     Name = "${block.name}"
   }
-}`
+}`;
     case "s3":
       return `resource "aws_s3_bucket" "${block.id}" {
   bucket = "${block.id}"
@@ -57,11 +63,11 @@ function generateTerraformCode(block: Block): string {
   tags = {
     Name = "${block.name}"
   }
-}`
+}`;
     default:
       return `# Terraform configuration for ${block.name}
 # Type: ${block.type}
-# Configuration: ${JSON.stringify(block.config, null, 2)}`
+# Configuration: ${JSON.stringify(block.config, null, 2)}`;
   }
 }
 
@@ -82,7 +88,7 @@ provider "aws" {
 }
 
 ${blocks.map((block) => generateTerraformCode(block)).join("\n\n")}
-`
+`;
 
   const variablesTf = `variable "aws_region" {
   description = "AWS region for resources"
@@ -103,20 +109,20 @@ ${blocks
   description = "Instance type for ${block.name}"
   type        = string
   default     = "${block.config.instanceType || "t3.micro"}"
-}`
+}`;
     }
     if (block.type === "lambda") {
       return `variable "${block.id}_memory" {
   description = "Memory for ${block.name}"
   type        = number
   default     = ${block.config.memory || 128}
-}`
+}`;
     }
-    return ""
+    return "";
   })
   .filter(Boolean)
   .join("\n\n")}
-`
+`;
 
   const outputsTf = `${blocks
     .map((block) => {
@@ -124,31 +130,31 @@ ${blocks
         return `output "${block.id}_public_ip" {
   description = "Public IP of ${block.name}"
   value       = aws_instance.${block.id}.public_ip
-}`
+}`;
       }
       if (block.type === "lambda") {
         return `output "${block.id}_arn" {
   description = "ARN of ${block.name}"
   value       = aws_lambda_function.${block.id}.arn
-}`
+}`;
       }
       if (block.type === "rds") {
         return `output "${block.id}_endpoint" {
   description = "Endpoint of ${block.name}"
   value       = aws_db_instance.${block.id}.endpoint
-}`
+}`;
       }
       if (block.type === "s3") {
         return `output "${block.id}_bucket_name" {
   description = "Name of ${block.name}"
   value       = aws_s3_bucket.${block.id}.id
-}`
+}`;
       }
-      return ""
+      return "";
     })
     .filter(Boolean)
     .join("\n\n")}
-`
+`;
 
   const tfvars = `aws_region  = "us-east-1"
 environment = "development"
@@ -156,23 +162,25 @@ environment = "development"
 ${blocks
   .map((block) => {
     if (block.type === "ec2") {
-      return `${block.id}_instance_type = "${block.config.instanceType || "t3.micro"}"`
+      return `${block.id}_instance_type = "${
+        block.config.instanceType || "t3.micro"
+      }"`;
     }
     if (block.type === "lambda") {
-      return `${block.id}_memory = ${block.config.memory || 128}`
+      return `${block.id}_memory = ${block.config.memory || 128}`;
     }
-    return ""
+    return "";
   })
   .filter(Boolean)
   .join("\n")}
-`
+`;
 
   return {
     "main.tf": mainTf,
     "variables.tf": variablesTf,
     "outputs.tf": outputsTf,
     "terraform.tfvars": tfvars,
-  }
+  };
 }
 
 export function PropertiesPanel({
@@ -182,13 +190,30 @@ export function PropertiesPanel({
   onUpdateBlock,
   onDeleteBlock,
 }: PropertiesPanelProps) {
-  const [selectedFile, setSelectedFile] = useState<string>("main.tf")
+  const [selectedFile, setSelectedFile] = useState<string>("main.tf");
+  const [isCollapsed, setIsCollapsed] = useState(false);
 
   if (!block) {
-    const terraformFiles = generateTerraformProject(blocks, connections)
+    const terraformFiles = generateTerraformProject(blocks, connections);
 
     return (
-      <div className="w-80 bg-sidebar border-l border-sidebar-border flex flex-col">
+      <div className={`relative bg-sidebar border-l border-sidebar-border flex flex-col transition-all duration-300 ease-in-out ${
+        isCollapsed ? "w-0 border-l-0" : "w-80"
+      }`}>
+        <Button
+          size="icon"
+          variant="ghost"
+          className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 ${
+            isCollapsed ? "-left-6" : "-left-6"
+          }`}
+          onClick={() => setIsCollapsed(!isCollapsed)}
+        >
+          <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
+            isCollapsed ? "rotate-180" : ""
+          }`} />
+        </Button>
+        {!isCollapsed && (
+        <>
         <div className="p-4 border-b border-sidebar-border">
           <div className="flex items-center gap-2">
             <FileCode className="w-5 h-5 text-primary" />
@@ -218,23 +243,43 @@ export function PropertiesPanel({
           <ScrollArea className="flex-1">
             <div className="p-4">
               <pre className="text-xs bg-muted/50 border border-border rounded-md p-3 overflow-x-auto font-mono">
-                <code>{terraformFiles[selectedFile as keyof typeof terraformFiles]}</code>
+                <code>
+                  {terraformFiles[selectedFile as keyof typeof terraformFiles]}
+                </code>
               </pre>
             </div>
           </ScrollArea>
         </div>
+        </>
+        )}
       </div>
-    )
+    );
   }
 
   const handleConfigChange = (key: string, value: any) => {
     onUpdateBlock(block.id, {
       config: { ...block.config, [key]: value },
-    })
-  }
+    });
+  };
 
   return (
-    <div className="w-80 bg-sidebar border-l border-sidebar-border flex flex-col">
+    <div className={`relative bg-sidebar border-l border-sidebar-border flex flex-col transition-all duration-300 ease-in-out ${
+      isCollapsed ? "w-0 border-l-0" : "w-80"
+    }`}>
+      <Button
+        size="icon"
+        variant="ghost"
+        className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 ${
+          isCollapsed ? "-left-6" : "-left-6"
+        }`}
+        onClick={() => setIsCollapsed(!isCollapsed)}
+      >
+        <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
+          isCollapsed ? "rotate-180" : ""
+        }`} />
+      </Button>
+      {!isCollapsed && (
+      <>
       <div className="p-4 border-b border-sidebar-border flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-md bg-primary/10 flex items-center justify-center">
@@ -274,7 +319,9 @@ export function PropertiesPanel({
                   <Label>Instance Type</Label>
                   <Select
                     value={block.config.instanceType}
-                    onValueChange={(value) => handleConfigChange("instanceType", value)}
+                    onValueChange={(value) =>
+                      handleConfigChange("instanceType", value)
+                    }
                   >
                     <SelectTrigger>
                       <SelectValue />
@@ -289,15 +336,26 @@ export function PropertiesPanel({
                 </div>
                 <div className="space-y-2">
                   <Label>Region</Label>
-                  <Select value={block.config.region} onValueChange={(value) => handleConfigChange("region", value)}>
+                  <Select
+                    value={block.config.region}
+                    onValueChange={(value) =>
+                      handleConfigChange("region", value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="us-east-1">US East (N. Virginia)</SelectItem>
-                      <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
+                      <SelectItem value="us-east-1">
+                        US East (N. Virginia)
+                      </SelectItem>
+                      <SelectItem value="us-west-2">
+                        US West (Oregon)
+                      </SelectItem>
                       <SelectItem value="eu-west-1">EU (Ireland)</SelectItem>
-                      <SelectItem value="ap-southeast-1">Asia Pacific (Singapore)</SelectItem>
+                      <SelectItem value="ap-southeast-1">
+                        Asia Pacific (Singapore)
+                      </SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -308,7 +366,12 @@ export function PropertiesPanel({
               <>
                 <div className="space-y-2">
                   <Label>Runtime</Label>
-                  <Select value={block.config.runtime} onValueChange={(value) => handleConfigChange("runtime", value)}>
+                  <Select
+                    value={block.config.runtime}
+                    onValueChange={(value) =>
+                      handleConfigChange("runtime", value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -324,7 +387,12 @@ export function PropertiesPanel({
                   <Input
                     type="number"
                     value={block.config.memory}
-                    onChange={(e) => handleConfigChange("memory", Number.parseInt(e.target.value))}
+                    onChange={(e) =>
+                      handleConfigChange(
+                        "memory",
+                        Number.parseInt(e.target.value)
+                      )
+                    }
                   />
                 </div>
               </>
@@ -334,7 +402,12 @@ export function PropertiesPanel({
               <>
                 <div className="space-y-2">
                   <Label>Engine</Label>
-                  <Select value={block.config.engine} onValueChange={(value) => handleConfigChange("engine", value)}>
+                  <Select
+                    value={block.config.engine}
+                    onValueChange={(value) =>
+                      handleConfigChange("engine", value)
+                    }
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -347,7 +420,10 @@ export function PropertiesPanel({
                 </div>
                 <div className="space-y-2">
                   <Label>Instance Size</Label>
-                  <Select value={block.config.size} onValueChange={(value) => handleConfigChange("size", value)}>
+                  <Select
+                    value={block.config.size}
+                    onValueChange={(value) => handleConfigChange("size", value)}
+                  >
                     <SelectTrigger>
                       <SelectValue />
                     </SelectTrigger>
@@ -393,6 +469,8 @@ export function PropertiesPanel({
           </TabsContent>
         </ScrollArea>
       </Tabs>
+      </>
+      )}
     </div>
-  )
+  );
 }

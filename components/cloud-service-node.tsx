@@ -4,6 +4,8 @@ import { ConfigLoader, ServiceConfig } from "@/lib/config-loader"
 import { CloudServiceNodeData, CloudServiceNode as CloudServiceNodeType } from "@/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
 import { memo, useEffect, useState } from "react"
+import { X } from "lucide-react"
+import { Button } from "@/components/ui/button"
 
 interface CloudServiceNodeProps extends NodeProps<CloudServiceNodeType> {
   onDoubleClick?: (nodeData: CloudServiceNodeData) => void
@@ -99,6 +101,22 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
 
   return (
     <div className={`relative ${selected ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}>
+      {/* Delete button - only visible when selected */}
+      {selected && nodeData.onDelete && (
+        <Button
+          size="icon"
+          variant="destructive"
+          className="absolute -top-3 -right-3 h-6 w-6 rounded-full shadow-lg z-10"
+          onClick={(e) => {
+            e.stopPropagation();
+            if (confirm('Delete this node?')) {
+              nodeData.onDelete?.();
+            }
+          }}
+        >
+          <X className="w-3 h-3" />
+        </Button>
+      )}
       {/* Handles on all four sides: top, bottom, left, right */}
       {/* Use a shared class to ensure transforms originate from center, use GPU acceleration,
           and raise z-index while hovered so the scaled circle doesn't reveal artifacts. */}

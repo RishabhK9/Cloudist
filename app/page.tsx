@@ -9,7 +9,10 @@ import { PropertiesPanel } from "@/components/properties-panel";
 import { Toolbar } from "@/components/toolbar";
 import { ProjectTitleBar } from "@/components/project-title-bar";
 import { CreateNewProjectDialog } from "@/components/create-new-project-dialog";
-import { OpenProjectDialog, type Project } from "@/components/open-project-dialog";
+import {
+  OpenProjectDialog,
+  type Project,
+} from "@/components/open-project-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
 import { CredentialManager } from "@/lib/credential-manager";
@@ -26,7 +29,7 @@ export default function InfrastructureBuilder() {
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [showOpenProject, setShowOpenProject] = useState(false);
-  
+
   // Canvas State
   const [blocks, setBlocks] = useState<Block[]>([]);
   const [connections, setConnections] = useState<Connection[]>([]);
@@ -46,30 +49,38 @@ export default function InfrastructureBuilder() {
     try {
       const savedProjects = localStorage.getItem("infrastructure-projects");
       const savedCurrentProjectId = localStorage.getItem("current-project-id");
-      
+
       if (savedProjects) {
         const parsedProjects = JSON.parse(savedProjects);
         setProjects(parsedProjects);
-        
+
         // Load current project if exists
         if (savedCurrentProjectId) {
-          const project = parsedProjects.find((p: Project) => p.id === savedCurrentProjectId);
+          const project = parsedProjects.find(
+            (p: Project) => p.id === savedCurrentProjectId
+          );
           if (project) {
             setCurrentProject(project);
             setBlocks(project.blocks || []);
             setConnections(project.connections || []);
-            setHistory([{ blocks: project.blocks || [], connections: project.connections || [] }]);
+            setHistory([
+              {
+                blocks: project.blocks || [],
+                connections: project.connections || [],
+              },
+            ]);
             console.log("✅ Project loaded:", project.name);
           }
         }
       }
-      
+
       // If no projects exist, create a default one
       if (!savedProjects || JSON.parse(savedProjects).length === 0) {
         const defaultProject: Project = {
           id: `project-${Date.now()}`,
           name: "Untitled Project",
           description: "",
+          provider: "aws",
           createdAt: new Date().toISOString(),
           lastModified: new Date().toISOString(),
           blocks: [],
@@ -77,7 +88,10 @@ export default function InfrastructureBuilder() {
         };
         setProjects([defaultProject]);
         setCurrentProject(defaultProject);
-        localStorage.setItem("infrastructure-projects", JSON.stringify([defaultProject]));
+        localStorage.setItem(
+          "infrastructure-projects",
+          JSON.stringify([defaultProject])
+        );
         localStorage.setItem("current-project-id", defaultProject.id);
       }
     } catch (error) {
@@ -171,11 +185,14 @@ export default function InfrastructureBuilder() {
 
     setProjects(updatedProjects);
     setCurrentProject(updatedProject);
-    localStorage.setItem("infrastructure-projects", JSON.stringify(updatedProjects));
+    localStorage.setItem(
+      "infrastructure-projects",
+      JSON.stringify(updatedProjects)
+    );
     console.log("✅ Project saved:", updatedProject.name);
   }, [currentProject, blocks, connections, projects]);
 
-  const handleCreateProject = (name: string, description: string) => {
+  const handleCreateProject = (name: string, description: string, provider: "aws" | "gcp" | "azure") => {
     // Save current project first
     if (currentProject) {
       saveCurrentProject();
@@ -185,6 +202,7 @@ export default function InfrastructureBuilder() {
       id: `project-${Date.now()}`,
       name,
       description,
+      provider,
       createdAt: new Date().toISOString(),
       lastModified: new Date().toISOString(),
       blocks: [],
@@ -201,9 +219,16 @@ export default function InfrastructureBuilder() {
     setHistory([{ blocks: [], connections: [] }]);
     setHistoryIndex(0);
 
-    localStorage.setItem("infrastructure-projects", JSON.stringify(updatedProjects));
+    localStorage.setItem(
+      "infrastructure-projects",
+      JSON.stringify(updatedProjects)
+    );
     localStorage.setItem("current-project-id", newProject.id);
-    console.log("✅ New project created:", name);
+    console.log("✅ New project created:", name, "with provider:", provider);
+  };
+
+  const handleNewProject = () => {
+    setShowCreateProject(true);
   };
 
   const handleOpenProject = (project: Project) => {
@@ -216,7 +241,9 @@ export default function InfrastructureBuilder() {
     setBlocks(project.blocks || []);
     setConnections(project.connections || []);
     setSelectedBlockId(null);
-    setHistory([{ blocks: project.blocks || [], connections: project.connections || [] }]);
+    setHistory([
+      { blocks: project.blocks || [], connections: project.connections || [] },
+    ]);
     setHistoryIndex(0);
     localStorage.setItem("current-project-id", project.id);
     console.log("✅ Project opened:", project.name);
@@ -225,14 +252,17 @@ export default function InfrastructureBuilder() {
   const handleDeleteProject = (projectId: string) => {
     const updatedProjects = projects.filter((p) => p.id !== projectId);
     setProjects(updatedProjects);
-    localStorage.setItem("infrastructure-projects", JSON.stringify(updatedProjects));
+    localStorage.setItem(
+      "infrastructure-projects",
+      JSON.stringify(updatedProjects)
+    );
 
     // If deleting current project, switch to another or create new
     if (currentProject?.id === projectId) {
       if (updatedProjects.length > 0) {
         handleOpenProject(updatedProjects[0]);
       } else {
-        handleCreateProject("Untitled Project", "");
+        handleCreateProject("Untitled Project", "", "aws");
       }
     }
   };
@@ -253,13 +283,17 @@ export default function InfrastructureBuilder() {
 
     // Check if there are any blocks to deploy
     if (blocks.length === 0) {
-      setDeploymentError("No infrastructure defined. Please add some services to deploy.");
+      setDeploymentError(
+        "No infrastructure defined. Please add some services to deploy."
+      );
       return;
     }
 
     // Check if AWS credentials are configured
-    if (!CredentialManager.hasCredentials('aws')) {
-      setDeploymentError("No AWS credentials configured. Please configure credentials in settings.");
+    if (!CredentialManager.hasCredentials("aws")) {
+      setDeploymentError(
+        "No AWS credentials configured. Please configure credentials in settings."
+      );
       return;
     }
 
@@ -268,13 +302,17 @@ export default function InfrastructureBuilder() {
   };
 
   return (
-    <div className="flex flex-col h-screen bg-background text-foreground overflow-hidden">
-      {/* Project Title Bar - Full Width */}
+    <div className="flex h-screen bg-background text-foreground overflow-hidden flex-col">
+      {/* Project Title Bar */}
       <ProjectTitleBar
         projectName={currentProject?.name || "Untitled Project"}
-        onCreateProject={() => setShowCreateProject(true)}
+        onCreateProject={handleNewProject}
         onOpenProject={() => setShowOpenProject(true)}
         onOpenSettings={() => setShowSettings(true)}
+        onEditProject={() => {
+          // TODO: Implement project editing
+          console.log("Edit project clicked");
+        }}
       />
 
       {/* Main Content Area */}
@@ -282,7 +320,6 @@ export default function InfrastructureBuilder() {
         <ComponentPalette onAddBlock={handleAddBlock} />
 
         <div className="flex-1 flex flex-col">
-          {/* Toolbar */}
           <Toolbar
             onSave={handleSave}
             onDeploy={handleDeploy}
@@ -303,6 +340,7 @@ export default function InfrastructureBuilder() {
               onAddBlock={handleAddBlock}
               onAddConnection={handleAddConnection}
               onDeleteConnection={handleDeleteConnection}
+              onDeleteBlock={handleDeleteBlock}
               onZoomChange={setZoom}
             />
           </ReactFlowProvider>
@@ -322,8 +360,12 @@ export default function InfrastructureBuilder() {
         <div className="fixed top-28 left-1/2 -translate-x-1/2 w-96 bg-destructive/10 border border-destructive/50 rounded-lg shadow-lg z-50 p-4">
           <div className="flex items-start gap-3">
             <div className="flex-1">
-              <div className="font-semibold text-destructive mb-1">Deployment Error:</div>
-              <div className="text-sm text-destructive/90">{deploymentError}</div>
+              <div className="font-semibold text-destructive mb-1">
+                Deployment Error:
+              </div>
+              <div className="text-sm text-destructive/90">
+                {deploymentError}
+              </div>
             </div>
             <Button
               size="icon"

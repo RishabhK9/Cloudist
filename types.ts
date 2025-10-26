@@ -10,6 +10,7 @@ export interface CloudServiceNodeData extends Record<string, unknown> {
   provider: string
   config?: Record<string, any>
   terraformType?: string
+  onDelete?: () => void
 }
 
 export interface CloudServiceNodeProps {
