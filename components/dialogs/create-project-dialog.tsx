@@ -54,6 +54,7 @@ export function CreateProjectDialog({ open, onOpenChange, onCreateProject }: Cre
       description: description.trim() || undefined,
       components: 0,
       status: "active" as const,
+      provider: "aws" as const, // Set default provider
     }
 
     onCreateProject(newProject)

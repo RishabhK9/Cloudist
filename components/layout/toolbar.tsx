@@ -6,7 +6,7 @@ import { useState, useEffect } from "react"
 
 interface ToolbarProps {
   onSave: () => void
-  onGenerateTerraform: () => void
+  onGenerateCode: () => void
   onPlanOrApply: () => void
   onUndo: () => void
   onRedo: () => void
@@ -16,12 +16,12 @@ interface ToolbarProps {
   canUndo?: boolean
   canRedo?: boolean
   deploymentStage: 'none' | 'generated' | 'planned' | 'applying' | 'applied'
-  isGeneratingTerraform?: boolean
+  isGeneratingCode?: boolean
 }
 
 export function Toolbar({ 
   onSave, 
-  onGenerateTerraform, 
+  onGenerateCode, 
   onPlanOrApply, 
   onUndo, 
   onRedo, 
@@ -31,7 +31,7 @@ export function Toolbar({
   canUndo, 
   canRedo,
   deploymentStage,
-  isGeneratingTerraform 
+  isGeneratingCode 
 }: ToolbarProps) {
   // Detect if user is on Mac - use state to avoid hydration mismatch
   const [isMac, setIsMac] = useState(false)
@@ -92,10 +92,10 @@ export function Toolbar({
         )}
         <Button 
           variant="outline"
-          onClick={onGenerateTerraform}
-          disabled={deploymentStage === 'applying' || isGeneratingTerraform}
+          onClick={onGenerateCode}
+          disabled={deploymentStage === 'applying' || isGeneratingCode}
         >
-          {isGeneratingTerraform ? (
+          {isGeneratingCode ? (
             <>
               <Loader2 className="w-4 h-4 mr-2 animate-spin" />
               Generating...
@@ -103,7 +103,7 @@ export function Toolbar({
           ) : (
             <>
               <Code className="w-4 h-4 mr-2" />
-              {deploymentStage === 'generated' || deploymentStage === 'planned' ? 'Regenerate Terraform' : 'Generate Terraform'}
+              {deploymentStage === 'generated' || deploymentStage === 'planned' ? 'Regenerate Code' : 'Generate Code'}
             </>
           )}
         </Button>

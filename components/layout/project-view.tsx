@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import React, { useState, useEffect } from "react"
 import { ReactFlowProvider } from "@xyflow/react"
 
 import { InfrastructureCanvas } from "@/components/canvas/infrastructure-canvas"
@@ -81,6 +81,24 @@ export function ProjectView({
   const [selectedProvider, setSelectedProvider] = useState<"aws" | "gcp" | "azure" | null>(project.provider || null)
   const [showCanvas, setShowCanvas] = useState(!!project.provider)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
+
+  // If project already has a provider, go directly to canvas
+  useEffect(() => {
+    console.log('🔍 ProjectView useEffect:', {
+      projectName: project.name,
+      provider: project.provider,
+      showCanvas,
+      selectedProvider
+    })
+    
+    if (project.provider && !showCanvas) {
+      console.log('✅ Project has provider, going to canvas')
+      setSelectedProvider(project.provider)
+      setShowCanvas(true)
+    } else if (!project.provider) {
+      console.log('⚠️ Project has no provider, will show provider selection')
+    }
+  }, [project.provider, showCanvas, project.name, selectedProvider])
 
   const handleProviderSelect = (provider: "aws" | "gcp" | "azure") => {
     setSelectedProvider(provider)
