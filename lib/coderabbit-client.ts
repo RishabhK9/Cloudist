@@ -61,7 +61,7 @@ export class CodeRabbitClient {
 
   constructor(apiKey?: string) {
     this.apiKey = apiKey || process.env.CODERABBIT_API_KEY || '';
-    this.baseUrl = 'https://api.coderabbit.ai/v1';
+    this.baseUrl = 'https://api.coderabbit.ai/api/v1';
   }
 
   /**
