@@ -86,6 +86,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
         return 'bg-blue-500'
       case 'azure':
         return 'bg-cyan-500'
+      case 'supabase':
+        return 'bg-emerald-500'
       default:
         return 'bg-muted-foreground'
     }

@@ -4,7 +4,7 @@
   "icon": "/supabase/database.svg",
   "category": "Database",
   "description": "PostgreSQL database with real-time capabilities",
-  "terraformType": "",
+  "terraformType": "supabase_project",
   "defaultConfig": {
     "project_name": "cloudist-test",
     "region": "us-east-1",

@@ -232,6 +232,10 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       name: "Microsoft Azure",
       color: "text-cyan-500",
     },
+    supabase: {
+      name: "Supabase",
+      color: "text-emerald-500",
+    },
   }
 
   const [services, setServices] = useState<any[]>([])

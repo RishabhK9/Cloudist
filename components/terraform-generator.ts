@@ -230,8 +230,30 @@ export class TerraformGenerator {
         return this.generateGCPConfig(serviceId, baseConfig, node)
       case "azure":
         return this.generateAzureConfig(serviceId, baseConfig, node)
+      case "supabase":
+        return this.generateSupabaseConfig(serviceId, baseConfig, node)
       default:
         return baseConfig
+    }
+  }
+
+  private generateSupabaseConfig(serviceId: string, config: Record<string, any>, node: Node): Record<string, any> {
+    switch (serviceId) {
+      case "database":
+        return {
+          name: config.project_name || `${this.sanitizeName(node.data.name as string)}-project-${Date.now()}`,
+          organization_id: config.organization_id || "var.supabase_organization_id",
+          db_pass: config.db_password || "var.supabase_db_password",
+          region: config.region || "us-east-1",
+          plan: config.plan || "free",
+          tags: {
+            Name: config.project_name || node.data.name,
+            Environment: "terraform-generated",
+          },
+        }
+
+      default:
+        return config
     }
   }
 
@@ -518,7 +540,21 @@ export class TerraformGenerator {
       default: this.getDefaultRegion(),
     }
 
-    // Note: RDS password is now set to default "password123" instead of using variables
+    // Add Supabase-specific variables if there are Supabase nodes
+    const hasSupabase = this.nodes.some(node => node.data.provider === 'supabase')
+    if (this.provider === "supabase" && hasSupabase) {
+      variables.supabase_organization_id = {
+        description: "Supabase organization ID",
+        type: "string",
+        default: "var.supabase_organization_id",
+      }
+      variables.supabase_db_password = {
+        description: "Supabase database password",
+        type: "string",
+        default: "TheCloudist$Project",
+        sensitive: true,
+      }
+    }
 
     // Add Lambda S3 variables if there are Lambda nodes
     const hasLambda = this.nodes.some(node => node.data.id === 'lambda')
@@ -626,6 +662,33 @@ export class TerraformGenerator {
             value: `${resourceType}.${resourceName}.s3_key`,
           }
           break
+
+        case "database":
+          if (node.data.provider === 'supabase') {
+            outputs[`${resourceName}_project_id`] = {
+              description: `Supabase project ID for ${node.data.name as string}`,
+              value: `${resourceType}.${resourceName}.id`,
+            }
+            outputs[`${resourceName}_project_url`] = {
+              description: `Supabase project URL for ${node.data.name as string}`,
+              value: `${resourceType}.${resourceName}.project_url`,
+            }
+            outputs[`${resourceName}_db_host`] = {
+              description: `Database host for ${node.data.name as string}`,
+              value: `${resourceType}.${resourceName}.db_host`,
+            }
+            outputs[`${resourceName}_anon_key`] = {
+              description: `Anonymous key for ${node.data.name as string}`,
+              value: `${resourceType}.${resourceName}.anon_key`,
+              sensitive: true,
+            }
+            outputs[`${resourceName}_service_role_key`] = {
+              description: `Service role key for ${node.data.name as string}`,
+              value: `${resourceType}.${resourceName}.service_role_key`,
+              sensitive: true,
+            }
+          }
+          break
       }
     })
 
@@ -648,6 +711,8 @@ export class TerraformGenerator {
         return "us-central1"
       case "azure":
         return "East US"
+      case "supabase":
+        return "us-east-1"
       default:
         return "us-east-1"
     }
@@ -794,6 +859,21 @@ resource "azurerm_resource_group" "main" {
 }
 `
 
+      case "supabase":
+        return `terraform {
+  required_providers {
+    supabase = {
+      source  = "supabase/supabase"
+      version = "~> 1.0"
+    }
+  }
+}
+
+provider "supabase" {
+  access_token = var.supabase_access_token
+}
+`
+
       default:
         return ""
     }
@@ -818,7 +898,8 @@ resource "azurerm_resource_group" "main" {
           if (value.startsWith("var.") ||
               value.startsWith("aws_") ||
               value.startsWith("google_") ||
-              value.startsWith("azurerm_")) {
+              value.startsWith("azurerm_") ||
+              value.startsWith("supabase_")) {
             result += `${spaces}${key} = ${formattedValue}\n`
           } else {
             result += `${spaces}${key} = "${formattedValue}"\n`

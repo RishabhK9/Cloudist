@@ -192,6 +192,8 @@ export function ConfigurationPanel({
         return 'bg-blue-500'
       case 'azure':
         return 'bg-cyan-500'
+      case 'supabase':
+        return 'bg-emerald-500'
       default:
         return 'bg-gray-500'
     }
