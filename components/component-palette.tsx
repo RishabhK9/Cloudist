@@ -238,7 +238,7 @@ export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
             <AccordionItem value="aws" className="border-b-0">
               <AccordionTrigger className="py-2 px-2 hover:bg-accent rounded-md text-sm font-semibold">
                 <div className="flex items-center gap-2">
-                  <img src="/aws/icon.png" alt="AWS" className="w-5 h-5 object-contain" />
+                  <img src="/aws/logo.png" alt="AWS" className="w-5 h-5 object-contain" />
                   <span>AWS</span>
                 </div>
               </AccordionTrigger>

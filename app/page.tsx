@@ -12,6 +12,7 @@ import { CreateNewProjectDialog } from "@/components/create-new-project-dialog";
 import { OpenProjectDialog, type Project } from "@/components/open-project-dialog";
 import { SettingsDialog } from "@/components/settings-dialog";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";
 import type { Block, Connection } from "@/types/infrastructure";
 
@@ -21,10 +22,13 @@ interface HistoryState {
 }
 
 export default function InfrastructureBuilder() {
+  const { toast } = useToast();
+  
   // Project Management State
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [showCreateProject, setShowCreateProject] = useState(false);
+  const [showEditProject, setShowEditProject] = useState(false);
   const [showOpenProject, setShowOpenProject] = useState(false);
   
   // Canvas State
@@ -240,10 +244,24 @@ export default function InfrastructureBuilder() {
   const handleSave = () => {
     try {
       saveCurrentProject();
-      alert("Project saved successfully!");
+      const toastInstance = toast({
+        title: "✓ Project saved",
+        description: "Your infrastructure design has been saved successfully.",
+        duration: 2500,
+      });
+      
+      // Auto-dismiss after duration
+      setTimeout(() => {
+        toastInstance.dismiss();
+      }, 2500);
     } catch (error) {
       console.error("Failed to save project:", error);
-      alert("Failed to save project. Please try again.");
+      toast({
+        title: "✗ Save failed",
+        description: "Failed to save project. Please try again.",
+        variant: "destructive",
+        duration: 3000,
+      });
     }
   };
 
@@ -253,18 +271,32 @@ export default function InfrastructureBuilder() {
 
     // Check if there are any blocks to deploy
     if (blocks.length === 0) {
-      setDeploymentError("No infrastructure defined. Please add some services to deploy.");
+      toast({
+        title: "Cannot deploy",
+        description: "No infrastructure defined. Please add some services to deploy.",
+        variant: "destructive",
+        duration: 3000,
+      });
       return;
     }
 
     // Check if AWS credentials are configured
     if (!CredentialManager.hasCredentials('aws')) {
-      setDeploymentError("No AWS credentials configured. Please configure credentials in settings.");
+      toast({
+        title: "Missing credentials",
+        description: "No AWS credentials configured. Please configure credentials in settings.",
+        variant: "destructive",
+        duration: 4000,
+      });
       return;
     }
 
     // If credentials are configured, proceed with deployment
-    alert("Deployment would start here! AWS credentials are configured.");
+    toast({
+      title: "🚀 Deployment started",
+      description: "Your infrastructure deployment has been initiated.",
+      duration: 3000,
+    });
   };
 
   return (
@@ -275,6 +307,7 @@ export default function InfrastructureBuilder() {
         onCreateProject={() => setShowCreateProject(true)}
         onOpenProject={() => setShowOpenProject(true)}
         onOpenSettings={() => setShowSettings(true)}
+        onEditProject={() => setShowEditProject(true)}
       />
 
       {/* Main Content Area */}

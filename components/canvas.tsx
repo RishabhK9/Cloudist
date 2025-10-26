@@ -3,6 +3,16 @@
 import React, { useCallback, useRef, useState, useEffect } from "react"
 import { Plus, Minus, Maximize2 } from "lucide-react"
 import { Button } from "@/components/ui/button"
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog"
 import { CloudServiceNode } from "@/components/cloud-service-node"
 import type { Block, Connection, BlockTemplate } from "@/types/infrastructure"
 import {
@@ -107,6 +117,8 @@ export function Canvas({
   onDeleteConnection,
   onZoomChange,
 }: CanvasProps) {
+  const [connectionToDelete, setConnectionToDelete] = useState<string | null>(null)
+
   // Convert blocks to React Flow nodes
   const initialNodes: Node[] = blocks.map((block) => ({
     id: block.id,
@@ -131,6 +143,8 @@ export function Canvas({
 
   const [nodes, setNodes, onNodesChange] = useNodesState(initialNodes)
   const [edges, setEdges, onEdgesChange] = useEdgesState(initialEdges)
+  const reactFlowWrapper = useRef<HTMLDivElement>(null)
+  const [reactFlowInstance, setReactFlowInstance] = useState<any>(null)
   const canvasRef = useRef<HTMLDivElement>(null)
 
   // Sync blocks and connections with React Flow nodes/edges only when they change externally
@@ -220,10 +234,15 @@ export function Canvas({
   // Handle edge deletion
   const handleEdgeClick = useCallback((event: React.MouseEvent, edge: Edge) => {
     event.stopPropagation()
-    if (confirm("Delete this connection?")) {
-      onDeleteConnection(edge.id)
+    setConnectionToDelete(edge.id)
+  }, [])
+
+  const confirmDeleteConnection = () => {
+    if (connectionToDelete) {
+      onDeleteConnection(connectionToDelete)
+      setConnectionToDelete(null)
     }
-  }, [onDeleteConnection])
+  }
 
   const handleZoomIn = () => {
     onZoomChange(Math.min(zoom + 0.1, 2))
@@ -297,6 +316,27 @@ export function Canvas({
           ))}
         </div>
       </div>
+
+      {/* Delete Connection Confirmation Dialog */}
+      <AlertDialog open={!!connectionToDelete} onOpenChange={() => setConnectionToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Connection</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete this connection? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={confirmDeleteConnection}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              Delete Connection
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

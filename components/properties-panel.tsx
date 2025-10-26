@@ -215,7 +215,7 @@ export function PropertiesPanel({
             </Select>
           </div>
 
-          <ScrollArea className="flex-1">
+          <ScrollArea className="flex-1 h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
             <div className="p-4">
               <pre className="text-xs bg-muted/50 border border-border rounded-md p-3 overflow-x-auto font-mono">
                 <code>{terraformFiles[selectedFile as keyof typeof terraformFiles]}</code>
@@ -266,7 +266,7 @@ export function PropertiesPanel({
           </TabsTrigger>
         </TabsList>
 
-        <ScrollArea className="flex-1">
+        <ScrollArea className="flex-1 h-0 [&_[data-slot=scroll-area-scrollbar]]:hidden">
           <TabsContent value="basic" className="p-4 space-y-4">
             {block.type === "ec2" && (
               <>
