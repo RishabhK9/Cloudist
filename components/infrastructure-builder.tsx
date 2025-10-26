@@ -15,6 +15,7 @@ import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { AIReviewDialog } from "@/components/dialogs/ai-review-dialog";
 import { PlanPreviewDialog } from "@/components/dialogs/plan-preview-dialog";
 import { TerraformPreviewDialog } from "@/components/dialogs/terraform-preview";
+import { ConsoleOutputDialog } from "@/components/dialogs/console-output-dialog";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";
@@ -1049,6 +1050,16 @@ variable "environment" {
         open={showPlanPreview}
         onOpenChange={setShowPlanPreview}
         planOutput={planOutput}
+      />
+
+      {/* Console Output Dialog */}
+      <ConsoleOutputDialog
+        open={showConsoleOutput}
+        onOpenChange={setShowConsoleOutput}
+        title={consoleTitle}
+        output={consoleOutput}
+        isRunning={isConsoleRunning}
+        status={consoleStatus}
       />
     </div>
   );
