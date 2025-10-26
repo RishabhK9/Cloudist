@@ -131,13 +131,17 @@ export class CodeRabbitClient {
       throw new Error('CodeRabbit API key not configured');
     }
 
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), 30000);
+
     const response = await fetch(`${this.baseUrl}/reviews/${reviewId}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${this.apiKey}`,
-        'Content-Type': 'application/json',
       },
-    });
+      signal: controller.signal,
+    })
+      .finally(() => clearTimeout(timeoutId));
 
     if (!response.ok) {
       const errorText = await response.text();
