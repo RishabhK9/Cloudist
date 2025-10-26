@@ -107,7 +107,7 @@ export function ConsoleOutputDialog({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.log`
+    a.download = `${title.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}-${Date.now()}.log`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
