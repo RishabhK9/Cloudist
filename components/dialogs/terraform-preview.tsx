@@ -357,7 +357,7 @@ export function TerraformPreviewDialog({
       }
 
       return (
-        <div key={index} className={className} style={{ whiteSpace: 'pre' }}>
+        <div key={index} className={className + " whitespace-pre"}>
           <span className="text-gray-400 select-none mr-4 inline-block w-8 text-right">
             {index + 1}
           </span>
