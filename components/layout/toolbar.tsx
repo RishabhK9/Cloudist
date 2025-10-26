@@ -1,6 +1,6 @@
 "use client"
 
-import { Save, Code, Rocket, Undo2, Redo2, CheckCircle, Eye, FileCode, Loader2 } from "lucide-react"
+import { Save, Code, Rocket, Undo2, Redo2, CheckCircle, Eye, FileCode, Loader2, Brain } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import { useState, useEffect } from "react"
 
@@ -12,6 +12,7 @@ interface ToolbarProps {
   onRedo: () => void
   onViewPreview?: () => void
   onViewCode?: () => void
+  onAIReview?: () => void
   canUndo?: boolean
   canRedo?: boolean
   deploymentStage: 'none' | 'generated' | 'planned' | 'applying' | 'applied'
@@ -26,6 +27,7 @@ export function Toolbar({
   onRedo, 
   onViewPreview,
   onViewCode,
+  onAIReview,
   canUndo, 
   canRedo,
   deploymentStage,
@@ -75,6 +77,19 @@ export function Toolbar({
 
       {/* Right Section */}
       <div className="flex items-center gap-2 flex-1 justify-end">
+        {onAIReview && (
+          <Button 
+            variant="default"
+            size="default"
+            onClick={onAIReview}
+            disabled={deploymentStage === 'applying'}
+            className="bg-gradient-to-r from-purple-500 to-blue-500 hover:from-purple-600 hover:to-blue-600 text-white font-semibold shadow-lg"
+            style={{ minWidth: '140px' }}
+          >
+            <Brain className="w-5 h-5 mr-2" />
+            Code Review
+          </Button>
+        )}
         <Button 
           variant="outline"
           onClick={onGenerateTerraform}

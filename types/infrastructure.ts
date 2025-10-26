@@ -47,6 +47,8 @@ export interface Connection {
   id: string
   from: string
   to: string
+  sourceHandle?: string | null  // Which handle on the source node (left, right, top, bottom)
+  targetHandle?: string | null  // Which handle on the target node (left, right, top, bottom)
 }
 
 export interface BlockTemplate {

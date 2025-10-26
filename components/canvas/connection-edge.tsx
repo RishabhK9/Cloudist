@@ -1,8 +1,23 @@
 "use client"
 
 import { ConnectionEdge as ConnectionEdgeType } from "@/types"
-import { type EdgeProps } from "@xyflow/react"
+import { type EdgeProps, getBezierPath, Position } from "@xyflow/react"
 import { memo } from "react"
+
+// Helper function to extract position from handle ID
+const getPositionFromHandleId = (handleId: string | null | undefined): Position => {
+  if (!handleId) return Position.Right
+  
+  // Handle ID formats: "left", "right", "top", "bottom"
+  const lowerHandleId = handleId.toLowerCase()
+  
+  if (lowerHandleId === 'left' || lowerHandleId.includes('left')) return Position.Left
+  if (lowerHandleId === 'right' || lowerHandleId.includes('right')) return Position.Right
+  if (lowerHandleId === 'top' || lowerHandleId.includes('top')) return Position.Top
+  if (lowerHandleId === 'bottom' || lowerHandleId.includes('bottom')) return Position.Bottom
+  
+  return Position.Right // default fallback
+}
 
 export const ConnectionEdge = memo(
   ({
@@ -13,52 +28,27 @@ export const ConnectionEdge = memo(
     targetY,
     sourcePosition,
     targetPosition,
+    sourceHandleId,
+    targetHandleId,
     data,
     selected,
   }: EdgeProps<ConnectionEdgeType>) => {
-    // Debug logging
-    console.log('ConnectionEdge rendering:', {
-      id,
+    // Determine the actual positions from handle IDs if sourcePosition/targetPosition aren't set
+    const actualSourcePosition = sourcePosition || getPositionFromHandleId(sourceHandleId)
+    const actualTargetPosition = targetPosition || getPositionFromHandleId(targetHandleId)
+    
+    // Create a smooth bezier curve that properly connects from source to target
+    const [edgePath, labelX, labelY] = getBezierPath({
       sourceX,
       sourceY,
+      sourcePosition: actualSourcePosition,
       targetX,
       targetY,
-      data,
-      selected
+      targetPosition: actualTargetPosition,
     })
 
-    // Create a custom straight line with right-angle bends
-    const createStepPath = (sx: number, sy: number, tx: number, ty: number) => {
-      // Calculate the midpoint for the step
-      const midX = (sx + tx) / 2
-      const midY = (sy + ty) / 2
-      
-      // Create a step path: horizontal first, then vertical
-      return `M ${sx} ${sy} L ${midX} ${sy} L ${midX} ${ty} L ${tx} ${ty}`
-    }
-    
-    const edgePath = createStepPath(sourceX, sourceY, targetX, targetY)
-    console.log('Edge path created:', edgePath)
-
-    // Get relationship color for the line
-    const getLineColor = (relationship?: string) => {
-      switch (relationship) {
-        case "depends_on":
-          return "#3b82f6" // blue-500
-        case "connects_to":
-          return "#10b981" // emerald-500
-        case "stores_in":
-          return "#8b5cf6" // violet-500
-        case "load_balances":
-          return "#f59e0b" // amber-500
-        case "accesses":
-          return "#f97316" // orange-500
-        default:
-          return "#6b7280" // gray-500
-      }
-    }
-
-    const lineColor = getLineColor(data?.relationship)
+    // Purple color for all connections
+    const lineColor = "#a855f7" // purple-500
 
     return (
       <>
@@ -74,22 +64,41 @@ export const ConnectionEdge = memo(
             pointerEvents: "all"
           }}
         />
-        {/* Visible edge path */}
+        {/* Visible edge path with smooth bezier curve */}
         <path
           id={id}
           className="react-flow__edge-path"
           d={edgePath}
-          strokeWidth={selected ? 4 : 3}
+          strokeWidth={selected ? 5 : 4}
           fill="none"
           strokeLinecap="round"
           strokeLinejoin="round"
           style={{ 
-            stroke: selected ? "#ef4444" : lineColor, // red when selected, colored based on relationship
+            stroke: selected ? "#ef4444" : lineColor, // red when selected, purple otherwise
             cursor: "pointer",
-            pointerEvents: "all"
+            pointerEvents: "all",
+            transition: "stroke 0.2s ease-in-out, stroke-width 0.2s ease-in-out"
           }}
           data-custom="true"
         />
+        {/* Optional: Add an arrowhead marker */}
+        <defs>
+          <marker
+            id={`arrow-${id}`}
+            viewBox="0 0 10 10"
+            refX="9"
+            refY="5"
+            markerWidth="6"
+            markerHeight="6"
+            orient="auto"
+          >
+            <path
+              d="M 0 0 L 10 5 L 0 10 z"
+              fill={selected ? "#ef4444" : lineColor}
+              style={{ transition: "fill 0.2s ease-in-out" }}
+            />
+          </marker>
+        </defs>
       </>
     )
   },

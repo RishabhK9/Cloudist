@@ -7,7 +7,7 @@ import { ComponentPalette } from "@/components/panels/component-palette";
 import { Canvas } from "@/components/canvas/canvas";
 import { PropertiesPanel } from "@/components/panels/properties-panel";
 import { ProvidersPane } from "@/components/panels/providers-pane";
-import { Toolbar } from "@/components/layout/toolbar";
+import { Toolbar } from "@/components/toolbar";
 import { ProjectTitleBar } from "@/components/layout/project-title-bar";
 import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-dialog";
 import { OpenProjectDialog, type Project } from "@/components/dialogs/open-project-dialog";

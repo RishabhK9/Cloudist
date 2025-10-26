@@ -1,9 +1,8 @@
 "use client"
 
-import { ConfigLoader, ServiceConfig } from "@/lib/config-loader"
 import { CloudServiceNodeData, CloudServiceNode as CloudServiceNodeType } from "@/types"
 import { Handle, Position, type NodeProps } from "@xyflow/react"
-import { memo, useEffect, useState } from "react"
+import { memo, useState } from "react"
 import { X } from "lucide-react"
 import { Button } from "@/components/ui/button"
 import {
@@ -22,9 +21,6 @@ interface CloudServiceNodeProps extends NodeProps<CloudServiceNodeType> {
 }
 
 export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudServiceNodeProps) => {
-  const [config, setConfig] = useState((data as CloudServiceNodeData)?.config || {})
-  const [serviceConfig, setServiceConfig] = useState<ServiceConfig | null>(null)
-  const [loading, setLoading] = useState(false)
   const [showDeleteDialog, setShowDeleteDialog] = useState(false)
 
   // Early return if data is not properly structured
@@ -40,25 +36,6 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
 
   
   const nodeData = data as CloudServiceNodeData
-
-  // Load service configuration when component mounts
-  useEffect(() => {
-    const loadConfig = async () => {
-      setLoading(true)
-      try {
-        const config = await ConfigLoader.loadServiceConfig(nodeData.provider, nodeData.id)
-        setServiceConfig(config)
-      } catch (error) {
-        console.error('Failed to load service config:', error)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    if (nodeData.provider && nodeData.id) {
-      loadConfig()
-    }
-  }, [nodeData.provider, nodeData.id])
 
 
 
@@ -131,31 +108,114 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
         </Button>
       )}
       {/* Handles on all four sides: top, bottom, left, right */}
-      {/* Use a shared class to ensure transforms originate from center, use GPU acceleration,
-          and raise z-index while hovered so the scaled circle doesn't reveal artifacts. */}
-      {/* `pointer-events-auto` ensures the handle receives hover events even if its parent scales. */}
+      {/* Each side has BOTH source and target handles with SAME ID */}
       {(() => {
         const handleClass =
-          "w-3.5 h-3.5 !bg-blue-400 dark:!bg-blue-500 " +
-          "transform-gpu origin-center pointer-events-auto rounded-full";
+          "w-4 h-4 !bg-blue-500 hover:!bg-blue-600 dark:!bg-blue-400 dark:hover:!bg-blue-500 " +
+          "!border-2 !border-white transition-all duration-200 " +
+          "pointer-events-auto rounded-full cursor-crosshair";
 
         return (
           <>
-            {/* Left side handles */}
-            <Handle type="source" position={Position.Left} id="left-source" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
-            <Handle type="target" position={Position.Left} id="left-target" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
+            {/* Left side - source handle */}
+            <Handle 
+              type="source" 
+              position={Position.Left} 
+              id="left" 
+              className={handleClass} 
+              style={{ 
+                left: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
+            {/* Left side - target handle (same ID, overlapping) */}
+            <Handle 
+              type="target" 
+              position={Position.Left} 
+              id="left" 
+              className={handleClass} 
+              style={{ 
+                left: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
 
-            {/* Right side handles */}
-            <Handle type="source" position={Position.Right} id="right-source" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
-            <Handle type="target" position={Position.Right} id="right-target" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
+            {/* Right side - source handle */}
+            <Handle 
+              type="source" 
+              position={Position.Right} 
+              id="right" 
+              className={handleClass} 
+              style={{ 
+                right: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
+            {/* Right side - target handle (same ID, overlapping) */}
+            <Handle 
+              type="target" 
+              position={Position.Right} 
+              id="right" 
+              className={handleClass} 
+              style={{ 
+                right: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
 
-            {/* Top side handles */}
-            <Handle type="source" position={Position.Top} id="top-source" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
-            <Handle type="target" position={Position.Top} id="top-target" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
+            {/* Top side - source handle */}
+            <Handle 
+              type="source" 
+              position={Position.Top} 
+              id="top" 
+              className={handleClass} 
+              style={{ 
+                top: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
+            {/* Top side - target handle (same ID, overlapping) */}
+            <Handle 
+              type="target" 
+              position={Position.Top} 
+              id="top" 
+              className={handleClass} 
+              style={{ 
+                top: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
 
-            {/* Bottom side handles */}
-            <Handle type="source" position={Position.Bottom} id="bottom-source" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
-            <Handle type="target" position={Position.Bottom} id="bottom-target" className={handleClass} style={{ opacity: 1, transformOrigin: 'center' }} />
+            {/* Bottom side - source handle */}
+            <Handle 
+              type="source" 
+              position={Position.Bottom} 
+              id="bottom" 
+              className={handleClass} 
+              style={{ 
+                bottom: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
+            {/* Bottom side - target handle (same ID, overlapping) */}
+            <Handle 
+              type="target" 
+              position={Position.Bottom} 
+              id="bottom" 
+              className={handleClass} 
+              style={{ 
+                bottom: '-6px',
+                opacity: 1,
+              }} 
+              isConnectable={true}
+            />
           </>
         )
       })()}

@@ -145,8 +145,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${apiGateway.id}-to-${sqsQueue.id}`,
       source: apiGateway.id,
       target: sqsQueue.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'sends_to',
         description: 'API Gateway sends messages to SQS queue'
@@ -158,8 +158,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${apiGateway.id}-to-${dynamoTable.id}`,
       source: apiGateway.id,
       target: dynamoTable.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'accesses',
         description: 'API Gateway accesses DynamoDB for data'
@@ -171,8 +171,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${apiGateway.id}-to-${s3Bucket.id}`,
       source: apiGateway.id,
       target: s3Bucket.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'serves_from',
         description: 'API Gateway serves static assets from S3'
@@ -184,8 +184,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${sqsQueue.id}-to-${dynamoTable.id}`,
       source: sqsQueue.id,
       target: dynamoTable.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'processes_to',
         description: 'SQS consumers process data to DynamoDB'
@@ -197,8 +197,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${sqsQueue.id}-to-${s3Bucket.id}`,
       source: sqsQueue.id,
       target: s3Bucket.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'processes_from',
         description: 'SQS consumers process files from S3'
@@ -215,8 +215,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${apiGateway.id}-to-${dynamoTable.id}`,
       source: apiGateway.id,
       target: dynamoTable.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'accesses',
         description: 'API Gateway accesses DynamoDB for data storage'
@@ -233,8 +233,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${apiGateway.id}-to-${rdsInstance.id}`,
       source: apiGateway.id,
       target: rdsInstance.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'connects_to',
         description: 'API Gateway connects to RDS database'
@@ -251,8 +251,8 @@ function generateConnections(components: InfrastructureComponent[]): Edge[] {
       id: `${sqsQueue.id}-to-${s3Bucket.id}`,
       source: sqsQueue.id,
       target: s3Bucket.id,
-      type: 'smoothstep',
-      style: { strokeWidth: 2, stroke: '#10b981' },
+      type: 'custom',
+      style: { strokeWidth: 3, stroke: '#10b981' },
       data: {
         relationship: 'processes',
         description: 'SQS processes files in S3 bucket'

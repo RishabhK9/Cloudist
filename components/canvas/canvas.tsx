@@ -14,6 +14,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog"
 import { CloudServiceNode } from "@/components/canvas/cloud-service-node"
+import { ConnectionEdge } from "@/components/canvas/connection-edge"
 import type { Block, Connection, BlockTemplate } from "@/types/infrastructure"
 import {
   ReactFlow,
@@ -21,6 +22,7 @@ import {
   Controls,
   BackgroundVariant,
   ConnectionMode,
+  ConnectionLineType,
   addEdge,
   useNodesState,
   useEdgesState,
@@ -97,14 +99,19 @@ const getProviderFromBlockType = (type: string): string => {
 }
 
 const defaultEdgeOptions = {
-  style: { strokeWidth: 3, stroke: 'hsl(var(--primary))' },
-  type: 'smoothstep',
+  style: { strokeWidth: 4, stroke: '#a855f7' }, // Purple, thicker
+  type: 'custom',
   animated: false,
 }
 
 // Define nodeTypes outside component to avoid recreation warnings
 const nodeTypes = {
   cloudService: CloudServiceNode,
+}
+
+// Define edgeTypes outside component to avoid recreation warnings
+const edgeTypes = {
+  custom: ConnectionEdge,
 }
 
 interface CanvasProps {
@@ -156,6 +163,8 @@ export function Canvas({
     id: conn.id,
     source: conn.from,
     target: conn.to,
+    sourceHandle: conn.sourceHandle || null,
+    targetHandle: conn.targetHandle || null,
     ...defaultEdgeOptions,
   }))
 
@@ -189,6 +198,8 @@ export function Canvas({
       id: conn.id,
       source: conn.from,
       target: conn.to,
+      sourceHandle: conn.sourceHandle || null,
+      targetHandle: conn.targetHandle || null,
       ...defaultEdgeOptions,
     }))
     
@@ -210,15 +221,25 @@ export function Canvas({
   // Handle new connections
   const onConnect: OnConnect = useCallback((connection: FlowConnection) => {
     if (connection.source && connection.target) {
+      // Create connection with custom type and preserved handle IDs
+      const connectionWithType = {
+        ...connection,
+        type: 'custom',
+      }
+      
       // First, immediately update ReactFlow's edge state for instant visual feedback
-      setEdges((eds) => addEdge(connection, eds))
+      setEdges((eds) => addEdge(connectionWithType, eds))
       
       // Then notify parent component for persistence
+      // Include handle IDs so they persist across reloads
       const newConnection: Connection = {
         id: `conn-${Date.now()}`,
         from: connection.source,
         to: connection.target,
+        sourceHandle: connection.sourceHandle,
+        targetHandle: connection.targetHandle,
       }
+      
       onAddConnection(newConnection)
     }
   }, [setEdges, onAddConnection])
@@ -297,12 +318,14 @@ export function Canvas({
         onEdgeClick={handleEdgeClick}
         onNodeClick={(_, node) => onSelectBlock(node.id)}
         nodeTypes={nodeTypes}
+        edgeTypes={edgeTypes}
+        connectionLineType={ConnectionLineType.Bezier}
+        connectionMode={ConnectionMode.Loose}
         defaultEdgeOptions={defaultEdgeOptions}
         className="canvas-grid w-full h-full"
         onPaneClick={() => onSelectBlock(null)}
         minZoom={0.5}
         maxZoom={2}
-        connectionMode={ConnectionMode.Loose}
         connectOnClick={false}
         elementsSelectable={true}
         nodesConnectable={true}

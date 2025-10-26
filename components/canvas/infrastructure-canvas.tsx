@@ -17,6 +17,8 @@ import {
   addEdge,
   Background,
   BackgroundVariant,
+  ConnectionLineType,
+  ConnectionMode,
   Controls,
   ReactFlow,
   ReactFlowProvider,
@@ -34,14 +36,13 @@ import {
   Code,
   Download,
   Play,
-  Pin,
   Brain,
-  Save,
-  Clock
+  Save
 } from "lucide-react"
 import GlassyPaneContainer from '@/src/cedar/components/containers/GlassyPaneContainer'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
 import { CloudServiceNode } from "./cloud-service-node"
+import { ConnectionEdge } from "./connection-edge"
 import { ConfigurationPanel } from "../panels/configuration-panel"
 import { getConnectionSuggestions, validateConnection } from "../utils/connection-validator"
 import { TerraformGenerator } from "../utils/terraform-generator"
@@ -54,24 +55,22 @@ import { AgentChat } from "@/components/features/agent-chat"
 import { AIReviewDialog } from "../dialogs/ai-review-dialog"
 import { SaveStatusIndicator } from "../features/save-status-indicator"
 import { ProvidersPane } from "../panels/providers-pane"
+import { Toolbar } from "../layout/toolbar"
 
+
+// Define edge types outside component to avoid recreation
+const edgeTypes = {
+  custom: ConnectionEdge,
+}
 
 const createNodeTypes = (onNodeDoubleClick: (nodeData: any) => void) => ({
   cloudService: (props: any) => <CloudServiceNode {...props} onDoubleClick={onNodeDoubleClick} />,
 })
 
-const createEdgeTypes = () => {
-  console.log('Creating edge types - using default edges for now')
-  return {
-    // Temporarily removing custom edge to test
-    // custom: ConnectionEdge,
-  }
-}
-
-// Use smoothstep edge type for testing
+// Use custom edge type with smooth bezier curves
 const defaultEdgeOptions = {
-  style: { strokeWidth: 3, stroke: '#ef4444' },
-  type: 'smoothstep',
+  style: { strokeWidth: 4, stroke: '#a855f7' }, // Purple, thicker
+  type: 'custom',
   animated: false,
 }
 
@@ -111,7 +110,6 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
       setLastSaved(new Date().toISOString())
       
       setTimeout(() => setIsSaving(false), 1000) // Show saving indicator briefly
-      console.log('💾 Canvas state saved to project')
     }
   }, [projectId, nodes, edges])
 
@@ -129,7 +127,6 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
     if (projectId) {
       const savedState = ProjectCanvasUtils.loadCanvasState(projectId)
       if (savedState) {
-        console.log('Loading saved canvas state for project:', projectId)
         setNodes(savedState.nodes)
         setEdges(savedState.edges)
         // Initialize history with the loaded state as the initial state
@@ -143,7 +140,6 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   useEffect(() => {
     const currentState = getCurrentState()
     if (currentState && !isSyncingFromHistory.current) {
-      console.log('Syncing state from history:', currentState)
       isSyncingFromHistory.current = true
       setNodes(currentState.nodes)
       setEdges(currentState.edges)
@@ -156,22 +152,15 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   // Canvas add functions for AI infrastructure creation
   const addNodesToCanvas = useCallback((newNodes: Node[]) => {
-    console.log('🎯 Canvas: AI adding nodes directly to canvas:', newNodes.length)
-
     setNodes((currentNodes) => {
-      console.log('📊 Canvas: Current nodes:', currentNodes.length, 'Adding:', newNodes.length)
       const updatedNodes = [...currentNodes, ...newNodes]
-      console.log('📊 Canvas: New total nodes:', updatedNodes.length)
       return updatedNodes
     })
   }, [])
 
   const addEdgesToCanvas = useCallback((newEdges: Edge[]) => {
-    console.log('🔗 Canvas: AI adding edges directly to canvas:', newEdges.length)
     setEdges((currentEdges) => {
-      console.log('📊 Canvas: Current edges:', currentEdges.length, 'Adding:', newEdges.length)
       const updatedEdges = [...currentEdges, ...newEdges]
-      console.log('📊 Canvas: New total edges:', updatedEdges.length)
       return updatedEdges
     })
   }, [])
@@ -183,29 +172,13 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   // Register canvas functions for AI infrastructure creation
   useEffect(() => {
-    console.log('🎨 Infrastructure Canvas: Registering functions for AI')
     registerCanvasFunctions(addNodesToCanvas, addEdgesToCanvas, getCanvasState)
 
     return () => {
-      console.log('🎨 Infrastructure Canvas: Unregistering functions')
       unregisterCanvasFunctions()
     }
   }, [addNodesToCanvas, addEdgesToCanvas, getCanvasState])
 
-  // Debug: Log edges changes
-  useEffect(() => {
-    console.log('Edges updated:', edges)
-    console.log('Edges length:', edges.length)
-    if (edges.length > 0) {
-      console.log('First edge details:', edges[0])
-    }
-  }, [edges])
-
-  // Debug: Log nodes changes
-  useEffect(() => {
-    console.log('Nodes updated:', nodes)
-    console.log('Nodes length:', nodes.length)
-  }, [nodes])
 
   const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance | null>(null)
   const [showSuggestions, setShowSuggestions] = useState(false)
@@ -277,37 +250,30 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
   const onConnect: OnConnect = useCallback(
     (params: Connection | Edge) => {
-      console.log('onConnect called with params:', params)
-      
       const sourceNode = nodes.find((n) => n.id === params.source)
       const targetNode = nodes.find((n) => n.id === params.target)
 
       if (!sourceNode || !targetNode) {
-        console.log('Source or target node not found')
         return
       }
 
       const sourceType = (sourceNode.data as any).id
       const targetType = (targetNode.data as any).id
 
-      console.log('Connecting:', sourceType, 'to', targetType)
-
       // Validate the connection
       const rule = validateConnection(sourceType, targetType, provider)
       
       const newEdge = {
         ...params,
-        type: 'smoothstep',
+        type: 'custom',
         animated: false,
-        style: { strokeWidth: 4, stroke: '#10b981' }, // Green color
+        style: { strokeWidth: 4, stroke: '#a855f7' }, // Purple color, thicker
         data: {
           relationship: rule?.relationship || "connects_to",
           description: rule?.description || "Manual connection",
           bidirectional: rule?.bidirectional || false,
         },
       }
-      
-      console.log('Creating new edge:', newEdge)
       
       // Calculate the new state before applying it
       const updatedEdges = addEdge(newEdge, edges)
@@ -471,17 +437,9 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   const handleSaveConfig = () => {
     // Trigger Terraform file regeneration when save is pressed
     updateAllTerraformFiles()
-    console.log('Configuration saved - Terraform files updated')
-    
-    // Optional: Add visual feedback (could be enhanced with toast notifications)
-    // For now, we'll just log the success
-    console.log('✅ Configuration saved successfully!')
   }
 
   const handleAIReview = async () => {
-    console.log('🎯 AI Review button clicked!')
-    console.log('Current nodes:', nodes.length)
-    console.log('Current provider:', provider)
     
     setIsAIReviewOpen(true)
     setIsAIReviewLoading(true)
@@ -490,9 +448,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     try {
       // Generate fresh terraform files before review
-      console.log('🔄 Generating fresh Terraform files for AI review...')
       const freshTerraformFiles = await generateTerraformFilesForReview()
-      console.log('✅ Generated files:', Object.keys(freshTerraformFiles))
       
       // Create an AbortController for timeout
       const controller = new AbortController()
@@ -539,9 +495,11 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     try {
       const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
-      return await terraformGenerator.generateTerraformCode()
+      const code = await terraformGenerator.generateTerraformCode()
+      
+      return code
     } catch (error) {
-      console.error('Error generating Terraform code:', error)
+      console.error('❌ Error generating Terraform code:', error)
       return `# Error generating Terraform code: ${error}`
     }
   }
@@ -731,6 +689,7 @@ provider "aws" {
 
   // Helper function to generate Terraform files (updates state)
   const generateTerraformFiles = async () => {
+    
     const mainTf = await generateTerraformCode()
     
     // Generate separate files using TerraformGenerator
@@ -1041,13 +1000,13 @@ provider "aws" {
     initFiles()
   }, [])
 
-  // Update main.tf when nodes change
+  // Update main.tf when nodes or edges change
   useEffect(() => {
     const updateFiles = async () => {
       await updateMainTf()
     }
     updateFiles()
-  }, [nodes])
+  }, [nodes, edges])
 
   // Handle resize functionality
   const handleMouseDown = useCallback(() => {
@@ -1119,41 +1078,29 @@ provider "aws" {
 
   return (
     <div className="h-screen bg-white flex flex-col">
-      {/* Top Header */}
-      <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4">
-        <div className="flex items-center gap-4">
+      {/* Top Header with Back Button and Toolbar */}
+      <div className="flex flex-col">
+        <div className="h-12 border-b border-gray-200 bg-white flex items-center px-4">
           <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-4 h- mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
-          <div className="flex items-center gap-2">
-            <UndoRedoControls
-              canUndo={canUndo}
-              canRedo={canRedo}
-              onUndo={undo}
-              onRedo={redo}
-              showCounts={true}
-              historyLength={historyLength}
-              currentIndex={currentIndex}
-            />
-            <Button 
-              variant="ghost" 
-              size="sm" 
-              onClick={saveCurrentState}
-              disabled={!hasUnsavedChanges()}
-              className="text-gray-600 hover:text-gray-900"
-            >
-              <Save className="w-4 h-4 mr-2" />
-              {isSaving ? 'Saving...' : 'Save'}
-            </Button>
-            <SaveStatusIndicator
-              isAutoSaving={isSaving}
-              hasUnsavedChanges={hasUnsavedChanges()}
-              lastSaved={lastSaved}
-            />
-          </div>
         </div>
-      </header>
+        <Toolbar
+          onSave={saveCurrentState}
+          onGenerateTerraform={async () => {
+            await generateTerraformFiles()
+          }}
+          onPlanOrApply={handleDeploy}
+          onUndo={undo}
+          onRedo={redo}
+          onAIReview={handleAIReview}
+          canUndo={canUndo}
+          canRedo={canRedo}
+          deploymentStage={isDeploying ? 'applying' : 'none'}
+          isGeneratingTerraform={false}
+        />
+      </div>
 
       <div className="flex-1 flex">
         {/* Left Sidebar */}
@@ -1240,16 +1187,22 @@ provider "aws" {
                   onEdgesChange={onEdgesChange}
                   onConnect={onConnect}
                   onInit={(instance) => {
-                    console.log('ReactFlow initialized:', instance)
                     setReactFlowInstance(instance as any)
                   }}
                   onDrop={onDrop}
                   onDragOver={onDragOver}
                   onSelectionChange={handleSelectionChange}
                   nodeTypes={createNodeTypes(handleNodeDoubleClick)}
-                  // edgeTypes={createEdgeTypes()}
+                  edgeTypes={edgeTypes}
                   className="bg-gray-50"
-                  connectionLineStyle={{ stroke: "#666", strokeWidth: 2 }}
+                  connectionLineStyle={{ 
+                    stroke: "#a855f7", 
+                    strokeWidth: 4,
+                    strokeLinecap: "round",
+                    strokeLinejoin: "round"
+                  }}
+                  connectionLineType={ConnectionLineType.Bezier}
+                  connectionMode={ConnectionMode.Loose}
                   defaultEdgeOptions={defaultEdgeOptions}
                   // Increase the connection radius so users don't have to be pixel-perfect when
                   // starting/ending connections on small handles.
@@ -1279,23 +1232,6 @@ provider "aws" {
                   <Controls />
                 </ReactFlow>
               </ReactFlowProvider>
-            </div>
-            
-            {/* AI Review Button - Bottom Right */}
-            <div className="absolute bottom-4 right-4 pointer-events-none z-10">
-              <div className="pointer-events-auto">
-                <GlassyPaneContainer
-                  className="cursor-pointer hover:scale-105 transition-transform duration-200"
-                  onClick={handleAIReview}
-                  whileHover={{ scale: 1.05 }}
-                  whileTap={{ scale: 0.95 }}
-                >
-                  <button className="px-6 py-3 flex items-center gap-2 text-sm font-medium text-gray-800 hover:text-gray-900">
-                    <Brain className="w-5 h-5" />
-                    AI Review
-                  </button>
-                </GlassyPaneContainer>
-              </div>
             </div>
 
           </div>
