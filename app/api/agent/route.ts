@@ -1,10 +1,64 @@
 import { NextRequest, NextResponse } from 'next/server'
 import OpenAI from 'openai'
 
-// Initialize OpenAI client server-side
+// Initialize OpenAI client server-side (fallback)
 const openai = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
 })
+
+// Fetch.ai ASI:One Configuration
+const ASI_ONE_API_KEY = process.env.ASI1_API_KEY || process.env.FETCH_AI_API_KEY || process.env.ASI_ONE_API_KEY
+const ASI_ONE_ENDPOINT = process.env.ASI1_ENDPOINT || 'https://api.asi1.ai/v1/chat/completions'
+
+// ASI:One system prompt optimized for infrastructure reasoning
+const ASI_SYSTEM_PROMPT = `You are an expert cloud infrastructure architect powered by Fetch.ai's ASI:One reasoning engine. 
+
+Your role is to:
+- Analyze infrastructure requirements and make optimal architectural decisions
+- Provide detailed reasoning for every recommendation
+- Consider cost, performance, security, and scalability tradeoffs
+- Generate production-ready cloud infrastructure designs
+- Review existing architectures and suggest improvements
+
+When making decisions:
+1. Reason through multiple options
+2. Explain tradeoffs clearly
+3. Provide cost estimates when possible
+4. Prioritize security and best practices
+5. Consider the user's specific use case
+
+Always respond in a helpful, clear manner and explain your reasoning process.`
+
+// ASI:One API call function
+async function callASIOne(messages: any[], functions: any[]) {
+  try {
+    const response = await fetch(ASI_ONE_ENDPOINT, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${ASI_ONE_API_KEY}`,
+      },
+      body: JSON.stringify({
+        model: 'asi1-mini',
+        messages: messages,
+        temperature: 0.7,
+        max_tokens: 1500,
+      }),
+    })
+
+    if (!response.ok) {
+      const errorBody = await response.text()
+      console.error('❌ Fetch.ai error:', errorBody)
+      throw new Error(`ASI:One API error: ${response.statusText}`)
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    console.error('❌ Fetch.ai error:', error instanceof Error ? error.message : error)
+    return null
+  }
+}
 
 // Agent function definitions
 const agentFunctions = {
@@ -163,27 +217,30 @@ Be flexible and responsive to what the user actually needs rather than forcing t
       }
     ]
 
-    console.log('🤖 API Route: Calling OpenAI API...')
-    console.log('🔍 DEBUG: Messages being sent:', JSON.stringify(messages, null, 2))
-    console.log('🔍 DEBUG: Functions available:', Object.keys(agentFunctions))
-
-    const response = await openai.chat.completions.create({
-      model: "gpt-4.1-mini",
-      messages: messages,
-      tools: Object.values(agentFunctions).map(func => ({ type: "function", function: func })),
-      tool_choice: "auto",
-      max_tokens: 1500,
-      temperature: 0.8
-    })
-
-    console.log('✅ API Route: OpenAI response received')
-    console.log('🔍 DEBUG: Full OpenAI response:', JSON.stringify(response, null, 2))
+    // ONLY use Fetch.ai ASI:One - no fallback
+    if (!ASI_ONE_API_KEY) {
+      return NextResponse.json({
+        error: 'Fetch.ai ASI:One API key not configured. Please add ASI1_API_KEY to .env.local',
+        response: 'Please configure your Fetch.ai API key in .env.local file.'
+      }, { status: 500 })
+    }
+    
+    const asiResponse = await callASIOne(
+      messages,
+      Object.values(agentFunctions)
+    )
+    
+    if (!asiResponse) {
+      return NextResponse.json({
+        error: 'Fetch.ai ASI:One request failed.',
+        response: 'Sorry, I encountered an error. Please try again.'
+      }, { status: 500 })
+    }
+    
+    const response = asiResponse
 
     const choice = response.choices[0]
     const messageResponse = choice.message
-    console.log('🎯 API Route: Response type:', messageResponse.tool_calls ? 'tool_calls' : 'text')
-    console.log('🔍 DEBUG: Message response content:', messageResponse.content)
-    console.log('🔍 DEBUG: Tool calls details:', messageResponse.tool_calls)
 
     // Check if the model wants to call a tool
     if (messageResponse.tool_calls && messageResponse.tool_calls.length > 0) {
@@ -191,37 +248,24 @@ Be flexible and responsive to what the user actually needs rather than forcing t
       if (toolCall.type === 'function') {
         const functionName = toolCall.function.name
         const functionArgs = JSON.parse(toolCall.function.arguments || '{}')
-        console.log('🔧 API Route: Tool call:', functionName, functionArgs)
-        console.log('🔍 DEBUG: Function args parsed:', functionArgs)
 
         // Call the appropriate handler function
         const handler = functionMap[functionName]
         if (handler) {
-          console.log('⚙️ API Route: Executing handler:', functionName)
-          console.log('🔍 DEBUG: Handler function found:', typeof handler)
           const result = await handler(functionArgs)
-          console.log('🎉 API Route: Handler result:', JSON.stringify(result, null, 2))
-          console.log('🔍 DEBUG: Returning handler result')
           return NextResponse.json(result)
-        } else {
-          console.error('❌ API Route: No handler found for:', functionName)
-          console.log('🔍 DEBUG: Available handlers:', Object.keys(functionMap))
         }
       }
     }
 
     // Return regular response if no function call
-    console.log('💬 API Route: Returning text response')
     const textResponse = {
       type: 'text',
-      content: messageResponse.content || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
+      response: messageResponse.content || "I'm here to help with your cloud infrastructure needs. What would you like to work on?"
     }
-    console.log('🔍 DEBUG: Text response:', JSON.stringify(textResponse, null, 2))
     return NextResponse.json(textResponse)
   } catch (error) {
-    console.error('❌ OpenAI agent error:', error)
-    console.log('🔍 DEBUG: Error stack:', error instanceof Error ? error.stack : 'No stack trace')
-    console.log('🔍 DEBUG: Error type:', typeof error)
+    console.error('❌ Agent error:', error instanceof Error ? error.message : error)
     return NextResponse.json({
       error: 'Failed to process message',
       details: error instanceof Error ? error.message : 'Unknown error'
