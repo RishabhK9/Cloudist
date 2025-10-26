@@ -88,6 +88,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
         return 'bg-cyan-500'
       case 'supabase':
         return 'bg-emerald-500'
+      case 'stripe':
+        return 'bg-purple-500'
       default:
         return 'bg-gray-500'
     }

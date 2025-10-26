@@ -30,7 +30,7 @@ export function ProjectTitleBar({
     <div className="h-12 border-b border-border bg-card/50 backdrop-blur-sm flex items-center justify-between px-4">
       {/* Left: App Title */}
       <div className="flex items-center gap-2 w-[180px]">
-        <img src="/aws/icon.png" alt="Cloudist" className="w-6 h-6 object-contain" />
+        <img src="/logo/image.png" alt="Cloudist" className="w-6 h-6 object-contain" />
         <span className="text-lg font-bold text-foreground">Cloudist</span>
       </div>
 

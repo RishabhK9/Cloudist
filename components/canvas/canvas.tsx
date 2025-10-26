@@ -31,8 +31,8 @@ import {
 } from "@xyflow/react"
 import "@xyflow/react/dist/style.css"
 
-// Map block types to AWS icon paths
-const awsIconMap: Record<string, string> = {
+// Map block types to icon paths
+const iconMap: Record<string, string> = {
   // Compute
   ec2: "/aws/Arch_Amazon-EC2_64.svg",
   lambda: "/aws/Arch_AWS-Lambda_64.svg",
@@ -79,6 +79,21 @@ const awsIconMap: Record<string, string> = {
   securityscanner: "/aws/Arch_AWS-IAM-Identity-Center_64.svg",
   autoscaler: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   backupmanager: "/aws/Arch_Amazon-S3-on-Outposts_64.svg",
+  
+  // Supabase
+  supabase_database: "/supabase/database.svg",
+  supabase_auth: "/supabase/auth.svg",
+  
+  // Stripe
+  stripe_payment: "/stripe/payment.svg",
+}
+
+// Helper function to determine provider from block type
+const getProviderFromBlockType = (type: string): string => {
+  if (type.startsWith('supabase_')) return 'supabase'
+  if (type.startsWith('stripe_')) return 'stripe'
+  // Default to AWS for all other types
+  return 'aws'
 }
 
 const defaultEdgeOptions = {
@@ -129,8 +144,8 @@ export function Canvas({
     data: {
       id: block.type,
       name: block.name,
-      provider: 'aws',
-      icon: awsIconMap[block.type] || '☁️',
+      provider: getProviderFromBlockType(block.type),
+      icon: iconMap[block.type] || '☁️',
       config: block.config,
       onDelete: () => onDeleteBlock(block.id),
     },
@@ -159,8 +174,8 @@ export function Canvas({
       data: {
         id: block.type,
         name: block.name,
-        provider: 'aws',
-        icon: awsIconMap[block.type] || '☁️',
+        provider: getProviderFromBlockType(block.type),
+        icon: iconMap[block.type] || '☁️',
         config: block.config,
         onDelete: () => onDeleteBlock(block.id),
       },

@@ -377,7 +377,7 @@ export default function InfrastructureBuilder() {
             />
           </div>
           <div className="h-[40vh] border-t border-sidebar-border overflow-hidden">
-            <ProvidersPane currentProvider={currentProject?.provider} />
+            <ProvidersPane currentProvider={currentProject?.provider} nodes={blocks} />
           </div>
         </div>
       </div>

@@ -30,6 +30,9 @@ export type BlockType =
   | "securityscanner"
   | "autoscaler"
   | "backupmanager"
+  | "supabase_database"
+  | "supabase_auth"
+  | "stripe_payment"
 
 export interface Block {
   id: string
@@ -50,6 +53,6 @@ export interface BlockTemplate {
   type: BlockType
   name: string
   icon: string
-  category: "compute" | "storage" | "networking" | "security" | "ai-agents"
+  category: "compute" | "storage" | "networking" | "security" | "ai-agents" | "supabase" | "stripe"
   defaultConfig: Record<string, any>
 }

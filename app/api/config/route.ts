@@ -3,7 +3,7 @@ import fs from 'fs/promises'
 import path from 'path'
 
 // Static configuration for available providers and services
-const AVAILABLE_PROVIDERS = ['aws', 'azure', 'gcp', 'supabase'] as const
+const AVAILABLE_PROVIDERS = ['aws', 'azure', 'gcp', 'supabase', 'stripe'] as const
 
 const PROVIDER_SERVICES: Record<string, string[]> = {
   aws: [
@@ -23,7 +23,8 @@ const PROVIDER_SERVICES: Record<string, string[]> = {
   ],
   azure: ['vm'],
   gcp: ['compute'],
-  supabase: ['database']
+  supabase: ['database', 'auth'],
+  stripe: ['payment']
 }
 
 // GET /api/config - Load all configs
