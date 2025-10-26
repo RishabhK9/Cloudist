@@ -73,18 +73,19 @@ export function ConsoleOutputDialog({
     }
     
     // Stream new content character by character (fast)
+    const charsPerTick = 5 // Characters to display per tick (60fps)
     let index = 0
     streamIntervalRef.current = setInterval(() => {
       if (index < newContent.length) {
-        setDisplayedOutput(prev => prev + newContent[index])
-        index++
+        setDisplayedOutput(prev => prev + newContent.slice(index, index + charsPerTick))
+        index += charsPerTick
       } else {
         if (streamIntervalRef.current) {
           clearInterval(streamIntervalRef.current)
           streamIntervalRef.current = null
         }
       }
-    }, 1) // 1ms per character for fast streaming
+    }, 16) // 16ms per tick (~60fps)
 
     return () => {
       if (streamIntervalRef.current) {
@@ -142,7 +143,7 @@ export function ConsoleOutputDialog({
     const url = URL.createObjectURL(blob)
     const a = document.createElement('a')
     a.href = url
-    a.download = `${title.replace(/\s+/g, '-').toLowerCase()}-${Date.now()}.log`
+    a.download = `${title.replace(/[^a-z0-9-]/gi, '-').toLowerCase()}-${Date.now()}.log`
     document.body.appendChild(a)
     a.click()
     document.body.removeChild(a)
@@ -276,7 +277,7 @@ export function ConsoleOutputDialog({
               className="h-full overflow-auto p-4 bg-slate-950 font-mono text-sm text-green-400 scroll-smooth"
             >
               <pre className="whitespace-pre-wrap break-words">
-                {displayedOutput || output || 'No output yet...'}
+                {displayedOutput || 'No output yet...'}
               </pre>
             </div>
             
