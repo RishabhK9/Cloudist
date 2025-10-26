@@ -1,7 +1,7 @@
 {
   "id": "database",
   "name": "Database",
-  "icon": "/supabase/database.svg",
+  "icon": "/supabase/supabase-logo-icon.svg",
   "category": "Database",
   "description": "PostgreSQL database with real-time capabilities",
   "terraformType": "",
