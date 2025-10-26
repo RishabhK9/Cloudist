@@ -12,6 +12,8 @@ import { ProjectTitleBar } from "@/components/layout/project-title-bar";
 import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-dialog";
 import { OpenProjectDialog, type Project } from "@/components/dialogs/open-project-dialog";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
+import { PlanPreviewDialog } from "@/components/dialogs/plan-preview-dialog";
+import { TerraformPreviewDialog } from "@/components/dialogs/terraform-preview";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/hooks/use-toast";
 import { CredentialManager } from "@/lib/credential-manager";
@@ -39,7 +41,15 @@ export default function InfrastructureBuilder() {
   const [zoom, setZoom] = useState(1);
   const [showAIChat, setShowAIChat] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showPlanPreview, setShowPlanPreview] = useState(false);
+  const [showTerraformCode, setShowTerraformCode] = useState(false);
   const [deploymentError, setDeploymentError] = useState<string | null>(null);
+  
+  // Deployment State
+  const [terraformCode, setTerraformCode] = useState<string | null>(null);
+  const [deploymentStage, setDeploymentStage] = useState<'none' | 'generated' | 'planned' | 'applying' | 'applied'>('none');
+  const [planOutput, setPlanOutput] = useState<string | null>(null);
+  const [isGeneratingTerraform, setIsGeneratingTerraform] = useState(false);
 
   const [history, setHistory] = useState<HistoryState[]>([
     { blocks: [], connections: [] },
@@ -293,17 +303,82 @@ export default function InfrastructureBuilder() {
     }
   };
 
-  const handleDeploy = () => {
-    // Clear previous error
+  const handleGenerateTerraform = async () => {
+    // Clear previous error and plan output
     setDeploymentError(null);
+    setPlanOutput(null);
 
     // Check if there are any blocks to deploy
     if (blocks.length === 0) {
       setDeploymentError(
-        "No infrastructure defined. Please add some services to deploy."
+        "No infrastructure defined. Please add some services to generate Terraform code."
       );
       return;
     }
+
+    const isRegeneration = terraformCode !== null;
+
+    try {
+      setIsGeneratingTerraform(true);
+      
+      toast({
+        title: isRegeneration ? "🔄 Regenerating Terraform" : "⚙️ Generating Terraform",
+        description: "Claude is generating your infrastructure code...",
+        duration: 2000,
+      });
+
+      // Call the API to generate Terraform code using Claude
+      const response = await fetch('/api/terraform/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          blocks,
+          connections,
+          provider: currentProject?.provider || 'aws'
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Failed to generate Terraform code');
+      }
+
+      const data = await response.json();
+      
+      if (!data.success || !data.terraformCode) {
+        throw new Error('Invalid response from Terraform generation API');
+      }
+
+      setTerraformCode(data.terraformCode);
+      setDeploymentStage('generated');
+      
+      toast({
+        title: isRegeneration ? "✅ Terraform Regenerated" : "✅ Terraform Generated",
+        description: `${isRegeneration ? 'Regenerated' : 'Generated'} code for ${data.metadata.blocksCount} services. Ready to plan.`,
+        duration: 3000,
+      });
+      
+      console.log(isRegeneration ? '✅ Terraform code regenerated successfully' : '✅ Terraform code generated successfully');
+    } catch (error) {
+      console.error("Failed to generate Terraform:", error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
+      setDeploymentError(`Failed to generate Terraform code: ${errorMessage}`);
+      
+      toast({
+        title: "❌ Generation Failed",
+        description: errorMessage,
+        variant: "destructive",
+        duration: 5000,
+      });
+    } finally {
+      setIsGeneratingTerraform(false);
+    }
+  };
+
+  const handlePlan = async () => {
+    if (deploymentStage !== 'generated') return;
 
     // Check if AWS credentials are configured
     if (!CredentialManager.hasCredentials("aws")) {
@@ -313,12 +388,71 @@ export default function InfrastructureBuilder() {
       return;
     }
 
-    // If credentials are configured, proceed with deployment
-    toast({
-      title: "🚀 Deployment started",
-      description: "Your infrastructure deployment has been initiated.",
-      duration: 3000,
-    });
+    try {
+      toast({
+        title: "📋 Running terraform plan",
+        description: "Analyzing infrastructure changes...",
+        duration: 2000,
+      });
+
+      // TODO: Call API to run terraform plan
+      await new Promise(resolve => setTimeout(resolve, 2000));
+      
+      // Mock plan output
+      const mockPlan = `Terraform will perform the following actions:
+
+  # aws_dynamodb_table.example will be created
+  + resource "aws_dynamodb_table" "example" {
+      + arn              = (known after apply)
+      + billing_mode     = "PAY_PER_REQUEST"
+      + hash_key         = "id"
+      + id               = (known after apply)
+      + name             = "my-table"
+    }
+
+Plan: 1 to add, 0 to change, 0 to destroy.`;
+
+      setPlanOutput(mockPlan);
+      setDeploymentStage('planned');
+      
+      toast({
+        title: "✅ Plan Complete",
+        description: "Review the changes and click Apply to deploy.",
+        duration: 3000,
+      });
+    } catch (error) {
+      console.error("Failed to plan:", error);
+      setDeploymentError("Failed to run terraform plan. Please check your configuration.");
+    }
+  };
+
+  const handleApply = async () => {
+    if (deploymentStage !== 'planned') return;
+
+    try {
+      setDeploymentStage('applying');
+      
+      toast({
+        title: "🚀 Applying changes",
+        description: "Deploying infrastructure to AWS...",
+        duration: 2000,
+      });
+
+      // TODO: Call API to run terraform apply
+      await new Promise(resolve => setTimeout(resolve, 3000));
+      
+      setDeploymentStage('applied');
+      
+      toast({
+        title: "✅ Deployment Complete",
+        description: "Your infrastructure has been successfully deployed!",
+        duration: 4000,
+      });
+    } catch (error) {
+      console.error("Failed to apply:", error);
+      setDeploymentError("Failed to deploy infrastructure. Please check the logs.");
+      setDeploymentStage('planned'); // Revert to planned state
+    }
   };
 
   return (
@@ -342,11 +476,16 @@ export default function InfrastructureBuilder() {
         <div className="flex-1 flex flex-col">
           <Toolbar
             onSave={handleSave}
-            onDeploy={handleDeploy}
+            onGenerateTerraform={handleGenerateTerraform}
+            onPlanOrApply={deploymentStage === 'generated' ? handlePlan : handleApply}
+            onViewPreview={() => setShowPlanPreview(true)}
+            onViewCode={() => setShowTerraformCode(true)}
             onUndo={handleUndo}
             onRedo={handleRedo}
             canUndo={historyIndex > 0}
             canRedo={historyIndex < history.length - 1}
+            deploymentStage={deploymentStage}
+            isGeneratingTerraform={isGeneratingTerraform}
           />
 
           <ReactFlowProvider>
@@ -462,6 +601,17 @@ export default function InfrastructureBuilder() {
         onDeleteProject={handleDeleteProject}
       />
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
+      <PlanPreviewDialog
+        open={showPlanPreview}
+        onOpenChange={setShowPlanPreview}
+        planOutput={planOutput}
+        onApply={handleApply}
+      />
+      <TerraformPreviewDialog
+        open={showTerraformCode}
+        onOpenChange={setShowTerraformCode}
+        terraformCode={terraformCode}
+      />
     </div>
   );
 }
