@@ -904,7 +904,7 @@ provider "aws" {
       <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4">
         <div className="flex items-center gap-4">
           <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-600 hover:text-gray-900">
-            <ArrowLeft className="w-4 h- mr-2" />
+            <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
           <div className="flex items-center gap-2">
