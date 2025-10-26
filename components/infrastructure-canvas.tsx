@@ -861,8 +861,7 @@ provider "aws" {
       await updateMainTf()
     }
     updateFiles()
-  }, [nodes])
-
+  }, [nodes, edges])
   // Handle keyboard events for delete and undo/redo functionality
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {
