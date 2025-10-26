@@ -241,7 +241,7 @@ export function ConsoleOutputDialog({
               className="h-full overflow-auto p-4 bg-slate-950 font-mono text-sm text-green-400 scroll-smooth"
             >
               <pre className="whitespace-pre-wrap break-words">
-                {displayedOutput || output || 'No output yet...'}
+                {displayedOutput || 'No output yet...'}
               </pre>
             </div>
             
