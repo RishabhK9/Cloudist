@@ -203,9 +203,7 @@ export function PropertiesPanel({
         <Button
           size="icon"
           variant="ghost"
-          className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 ${
-            isCollapsed ? "-left-6" : "-left-6"
-          }`}
+          className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 -left-6`}
           onClick={() => setIsCollapsed(!isCollapsed)}
         >
           <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
@@ -269,9 +267,7 @@ export function PropertiesPanel({
       <Button
         size="icon"
         variant="ghost"
-        className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 ${
-          isCollapsed ? "-left-6" : "-left-6"
-        }`}
+        className={`absolute top-1/2 -translate-y-1/2 h-20 w-6 rounded-l-md rounded-r-none bg-sidebar border border-r-0 border-sidebar-border hover:bg-accent transition-all duration-300 -left-6`}
         onClick={() => setIsCollapsed(!isCollapsed)}
       >
         <ChevronRight className={`w-4 h-4 transition-transform duration-300 ${
