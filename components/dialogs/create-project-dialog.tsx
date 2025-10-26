@@ -21,7 +21,7 @@ interface Project {
   id: string
   name: string
   description?: string
-  provider?: "aws" | "gcp" | "azure" | "supabase"
+  provider?: "aws" | "gcp" | "azure"
   architectures: number
   lastModified: string
   status: "active" | "archived"

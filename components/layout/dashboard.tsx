@@ -1,7 +1,7 @@
 "use client"
 
-import { CreateProjectDialog } from "@/components/create-project-dialog"
-import { ProjectView } from "@/components/project-view"
+import { CreateProjectDialog } from "@/components/dialogs/create-project-dialog"
+import { ProjectView } from "@/components/layout/project-view"
 import { Badge } from "@/components/ui/badge"
 import { Button } from "@/components/ui/button"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
@@ -20,7 +20,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select"
-import { CredentialManager, type AWSCredentials, type AzureCredentials, type GCPCredentials, type SupabaseCredentials } from "@/lib/credential-manager"
+import { CredentialManager, type AWSCredentials, type AzureCredentials, type GCPCredentials } from "@/lib/credential-manager"
 import { testCredentials } from "@/lib/api-service"
 // Remove the separate persistence import - we'll use localStorage directly
 import { cn } from "@/lib/utils"
@@ -44,7 +44,7 @@ interface Project {
   id: string
   name: string
   description?: string
-  provider?: "aws" | "gcp" | "azure" | "supabase"
+  provider?: "aws" | "gcp" | "azure"
   architectures: number
   lastModified: string
   status: "active" | "archived"
@@ -69,13 +69,11 @@ export function Dashboard() {
   const [awsCredentials, setAwsCredentials] = useState<Partial<AWSCredentials>>({})
   const [gcpCredentials, setGcpCredentials] = useState<Partial<GCPCredentials>>({})
   const [azureCredentials, setAzureCredentials] = useState<Partial<AzureCredentials>>({})
-  const [supabaseCredentials, setSupabaseCredentials] = useState<Partial<SupabaseCredentials>>({})
   const [credentialErrors, setCredentialErrors] = useState<{[key: string]: string[]}>({})
   const [credentialStatus, setCredentialStatus] = useState<{[key: string]: 'idle' | 'saving' | 'testing' | 'success' | 'error'}>({
     aws: 'idle',
     gcp: 'idle', 
-    azure: 'idle',
-    supabase: 'idle'
+    azure: 'idle'
   })
 
   const sidebarItems = [
@@ -154,12 +152,10 @@ export function Dashboard() {
       const aws = CredentialManager.getCredentials('aws')
       const gcp = CredentialManager.getCredentials('gcp')
       const azure = CredentialManager.getCredentials('azure')
-      const supabase = CredentialManager.getCredentials('supabase')
       
       if (aws) setAwsCredentials(aws)
       if (gcp) setGcpCredentials(gcp)
       if (azure) setAzureCredentials(azure)
-      if (supabase) setSupabaseCredentials(supabase)
     }
     
     loadProjects()
@@ -259,30 +255,6 @@ export function Dashboard() {
       setCredentialErrors(prev => ({ 
         ...prev, 
         azure: [error instanceof Error ? error.message : 'Failed to save credentials'] 
-      }))
-    }
-  }
-
-  // Supabase credential handlers
-  const handleSaveSupabaseCredentials = async () => {
-    setCredentialStatus(prev => ({ ...prev, supabase: 'saving' }))
-    
-    try {
-      const errors = CredentialManager.validateSupabaseCredentials(supabaseCredentials)
-      if (errors.length > 0) {
-        setCredentialErrors(prev => ({ ...prev, supabase: errors }))
-        setCredentialStatus(prev => ({ ...prev, supabase: 'error' }))
-        return
-      }
-
-      CredentialManager.saveCredentials('supabase', supabaseCredentials)
-      setCredentialErrors(prev => ({ ...prev, supabase: [] }))
-      setCredentialStatus(prev => ({ ...prev, supabase: 'success' }))
-    } catch (error) {
-      setCredentialStatus(prev => ({ ...prev, supabase: 'error' }))
-      setCredentialErrors(prev => ({ 
-        ...prev, 
-        supabase: [error instanceof Error ? error.message : 'Failed to save credentials'] 
       }))
     }
   }
@@ -663,80 +635,6 @@ export function Dashboard() {
                       <Input placeholder="xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx" className="mt-1" />
                     </div>
                     <Button className="w-full">Save Azure Credentials</Button>
-                  </CardContent>
-                </Card>
-
-                {/* Supabase */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <div className="w-6 h-6 bg-emerald-100 rounded flex items-center justify-center">
-                        <span className="text-emerald-600 font-bold text-xs">S</span>
-                      </div>
-                      Supabase
-                    </CardTitle>
-                    <CardDescription>Supabase Management API credentials</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Access Token</label>
-                      <Input 
-                        type="password"
-                        placeholder="sbp_..." 
-                        value={supabaseCredentials.accessToken || ''}
-                        onChange={(e) => setSupabaseCredentials(prev => ({ ...prev, accessToken: e.target.value }))}
-                        className="mt-1" 
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Get your token from{" "}
-                        <a 
-                          href="https://app.supabase.com/account/tokens" 
-                          target="_blank" 
-                          rel="noopener noreferrer"
-                          className="text-emerald-600 hover:underline"
-                        >
-                          Supabase Dashboard
-                        </a>
-                      </p>
-                    </div>
-                    <div>
-                      <label className="text-sm font-medium text-gray-700">Organization ID (Optional)</label>
-                      <Input 
-                        placeholder="org_..." 
-                        value={supabaseCredentials.organizationId || ''}
-                        onChange={(e) => setSupabaseCredentials(prev => ({ ...prev, organizationId: e.target.value }))}
-                        className="mt-1" 
-                      />
-                      <p className="text-xs text-gray-500 mt-1">
-                        Will be auto-detected if not provided
-                      </p>
-                    </div>
-
-                    {/* Error messages */}
-                    {credentialErrors.supabase && credentialErrors.supabase.length > 0 && (
-                      <div className="text-sm text-red-600">
-                        {credentialErrors.supabase.map((error, i) => (
-                          <div key={i}>❌ {error}</div>
-                        ))}
-                      </div>
-                    )}
-                    
-                    {/* Success message */}
-                    {credentialStatus.supabase === 'success' && (
-                      <div className="text-sm text-green-600">
-                        ✓ Supabase credentials saved successfully!
-                      </div>
-                    )}
-                    
-                    <Button 
-                      className="w-full bg-emerald-600 hover:bg-emerald-700" 
-                      onClick={handleSaveSupabaseCredentials}
-                      disabled={credentialStatus.supabase === 'saving'}
-                    >
-                      {credentialStatus.supabase === 'saving' && 'Saving...'}
-                      {credentialStatus.supabase === 'testing' && 'Testing credentials...'}
-                      {credentialStatus.supabase !== 'saving' && credentialStatus.supabase !== 'testing' && 'Save Supabase Credentials'}
-                    </Button>
                   </CardContent>
                 </Card>
               </div>

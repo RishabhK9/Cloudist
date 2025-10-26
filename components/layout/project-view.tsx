@@ -3,8 +3,8 @@
 import { useState } from "react"
 import { ReactFlowProvider } from "@xyflow/react"
 
-import { InfrastructureCanvas } from "@/components/infrastructure-canvas"
-import { ProviderSelection } from "@/components/provider-selection"
+import { InfrastructureCanvas } from "@/components/canvas/infrastructure-canvas"
+import { ProviderSelection } from "@/components/features/provider-selection"
 
 import {
   AlertDialog,
@@ -37,7 +37,7 @@ interface Project {
   id: string
   name: string
   description?: string
-  provider?: "aws" | "gcp" | "azure" | "supabase"
+  provider?: "aws" | "gcp" | "azure"
   architectures: number
   lastModified: string
   status: "active" | "archived"
