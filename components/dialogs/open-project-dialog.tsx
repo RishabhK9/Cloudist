@@ -29,7 +29,7 @@ export interface Project {
   id: string
   name: string
   description: string
-  provider?: "aws" | "gcp" | "azure"
+  provider?: "aws" | "gcp" | "azure" | "supabase" | "hybrid"
   createdAt: string
   lastModified: string
   blocks: any[]

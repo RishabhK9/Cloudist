@@ -20,7 +20,7 @@ import {
   SelectValue,
 } from "@/components/ui/select"
 import { ScrollArea } from "@/components/ui/scroll-area"
-import { CredentialManager, type AWSCredentials, type AzureCredentials, type GCPCredentials } from "@/lib/credential-manager"
+import { CredentialManager, type AWSCredentials, type AzureCredentials, type GCPCredentials, type SupabaseCredentials } from "@/lib/credential-manager"
 import { testCredentials } from "@/lib/api-service"
 
 interface SettingsDialogProps {
@@ -33,11 +33,13 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
   const [awsCredentials, setAwsCredentials] = useState<Partial<AWSCredentials>>({})
   const [gcpCredentials, setGcpCredentials] = useState<Partial<GCPCredentials>>({})
   const [azureCredentials, setAzureCredentials] = useState<Partial<AzureCredentials>>({})
+  const [supabaseCredentials, setSupabaseCredentials] = useState<Partial<SupabaseCredentials>>({})
   const [credentialErrors, setCredentialErrors] = useState<{[key: string]: string[]}>({})
   const [credentialStatus, setCredentialStatus] = useState<{[key: string]: 'idle' | 'saving' | 'testing' | 'success' | 'error'}>({
     aws: 'idle',
     gcp: 'idle', 
-    azure: 'idle'
+    azure: 'idle',
+    supabase: 'idle'
   })
 
   // Load credentials when dialog opens
@@ -47,10 +49,12 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
         const aws = CredentialManager.getCredentials('aws')
         const gcp = CredentialManager.getCredentials('gcp')
         const azure = CredentialManager.getCredentials('azure')
+        const supabase = CredentialManager.getCredentials('supabase')
         
         if (aws) setAwsCredentials(aws)
         if (gcp) setGcpCredentials(gcp)
         if (azure) setAzureCredentials(azure)
+        if (supabase) setSupabaseCredentials(supabase)
       }
       
       loadCredentials()
@@ -136,6 +140,51 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
       setCredentialErrors(prev => ({ 
         ...prev, 
         azure: [error instanceof Error ? error.message : 'Failed to save credentials'] 
+      }))
+    }
+  }
+
+  // Supabase credential handlers
+  const handleSaveSupabaseCredentials = async () => {
+    setCredentialStatus(prev => ({ ...prev, supabase: 'saving' }))
+    
+    try {
+      const errors = CredentialManager.validateSupabaseCredentials(supabaseCredentials)
+      if (errors.length > 0) {
+        setCredentialErrors(prev => ({ ...prev, supabase: errors }))
+        setCredentialStatus(prev => ({ ...prev, supabase: 'error' }))
+        return
+      }
+
+      CredentialManager.saveCredentials('supabase', supabaseCredentials)
+      setCredentialErrors(prev => ({ ...prev, supabase: [] }))
+      setCredentialStatus(prev => ({ ...prev, supabase: 'success' }))
+    } catch (error) {
+      setCredentialStatus(prev => ({ ...prev, supabase: 'error' }))
+      setCredentialErrors(prev => ({ 
+        ...prev, 
+        supabase: [error instanceof Error ? error.message : 'Failed to save credentials'] 
+      }))
+    }
+  }
+
+  const handleTestSupabaseCredentials = async () => {
+    setCredentialStatus(prev => ({ ...prev, supabase: 'testing' }))
+    
+    try {
+      const result = await testCredentials('supabase', supabaseCredentials)
+      if (result.success) {
+        setCredentialStatus(prev => ({ ...prev, supabase: 'success' }))
+        setCredentialErrors(prev => ({ ...prev, supabase: [] }))
+      } else {
+        setCredentialStatus(prev => ({ ...prev, supabase: 'error' }))
+        setCredentialErrors(prev => ({ ...prev, supabase: [result.error || 'Test failed'] }))
+      }
+    } catch (error) {
+      setCredentialStatus(prev => ({ ...prev, supabase: 'error' }))
+      setCredentialErrors(prev => ({ 
+        ...prev, 
+        supabase: [error instanceof Error ? error.message : 'Test failed'] 
       }))
     }
   }
@@ -327,6 +376,65 @@ export function SettingsDialog({ open, onOpenChange }: SettingsDialogProps) {
                   />
                 </div>
                 <Button className="w-full" disabled>Save Azure Credentials</Button>
+              </CardContent>
+            </Card>
+
+            {/* Supabase Credentials */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="flex items-center gap-2 text-base">
+                  <div className="w-6 h-6 bg-green-100 rounded flex items-center justify-center">
+                    <span className="text-green-600 font-bold text-xs">S</span>
+                  </div>
+                  Supabase
+                </CardTitle>
+                <CardDescription>Supabase Management API access token</CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div>
+                  <label className="text-sm font-medium text-gray-700">Access Token</label>
+                  <Input 
+                    type="password" 
+                    placeholder="sbp_..." 
+                    className="mt-1"
+                    value={supabaseCredentials.accessToken || ''}
+                    onChange={(e) => setSupabaseCredentials(prev => ({ ...prev, accessToken: e.target.value }))}
+                  />
+                  <p className="text-xs text-gray-500 mt-1">
+                    Get your access token from <a href="https://supabase.com/dashboard/account/tokens" target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Supabase Dashboard</a>
+                  </p>
+                </div>
+                
+                {credentialErrors.supabase && credentialErrors.supabase.length > 0 && (
+                  <div className="text-sm text-red-600">
+                    {credentialErrors.supabase.map((error, index) => (
+                      <div key={index}>{error}</div>
+                    ))}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <Button 
+                    onClick={handleSaveSupabaseCredentials}
+                    disabled={credentialStatus.supabase === 'saving'}
+                    className="flex-1"
+                  >
+                    {credentialStatus.supabase === 'saving' ? 'Saving...' : 'Save Supabase Credentials'}
+                  </Button>
+                  <Button 
+                    variant="outline"
+                    onClick={handleTestSupabaseCredentials}
+                    disabled={credentialStatus.supabase === 'testing' || !supabaseCredentials.accessToken}
+                  >
+                    {credentialStatus.supabase === 'testing' ? 'Testing...' : 'Test'}
+                  </Button>
+                </div>
+
+                {credentialStatus.supabase === 'success' && (
+                  <div className="text-sm text-green-600">
+                    ✅ Credentials saved successfully!
+                  </div>
+                )}
               </CardContent>
             </Card>
           </div>

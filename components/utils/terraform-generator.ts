@@ -5,7 +5,6 @@ export interface TerraformResource {
   name: string
   config: Record<string, any>
   dependencies?: string[]
-  nodeId?: string  // Add node ID for reliable matching
 }
 
 export interface TerraformOutput {
@@ -24,20 +23,6 @@ export class TerraformGenerator {
     this.provider = provider
     this.nodes = nodes
     this.edges = edges
-    
-    console.log('🏗️ ===== TerraformGenerator Constructor =====')
-    console.log('🏗️ Provider:', provider)
-    console.log('🏗️ Nodes count:', nodes.length)
-    console.log('🏗️ Edges count:', edges.length)
-    console.log('🏗️ Nodes:', nodes.map(n => ({ id: n.id, name: n.data?.name, serviceId: n.data?.id })))
-    console.log('🏗️ Edges:', edges.map(e => ({ 
-      id: e.id, 
-      source: e.source, 
-      target: e.target,
-      sourceHandle: e.sourceHandle,
-      targetHandle: e.targetHandle,
-      data: e.data 
-    })))
   }
 
   generate(): TerraformOutput {
@@ -61,15 +46,11 @@ export class TerraformGenerator {
       const config = this.generateResourceConfig(node)
 
       // Add the main resource
-      // Safely get resource name with multiple fallbacks (using stable suffix from node.id)
-      const resourceName = String(node.data?.name || node.data?.id || node.id || `resource_${this.getStableSuffix(node.id)}`)
-      
       resources.push({
         type: node.data.terraformType as string,
-        name: this.sanitizeName(resourceName),
+        name: this.sanitizeName((node.data.name as string) || (node.data.id as string)),
         config,
         dependencies,
-        nodeId: node.id,  // Store node ID for reliable matching
       })
 
       // Add additional resources for specific services
@@ -92,21 +73,19 @@ export class TerraformGenerator {
           dependencies: [bucketReference],
         })
 
-        // Add versioning resource for S3 buckets
+        // Add versioning resource for S3 buckets (always add it)
         const versioningEnabled = (node.data.config as any)?.versioning === "Enabled"
-        if (versioningEnabled !== undefined) {
-          resources.push({
-            type: 'aws_s3_bucket_versioning',
-            name: `${resourceName}_versioning`,
-            config: {
-              bucket: `${bucketReference}.id`,
-              versioning_configuration: {
-                status: versioningEnabled ? "Enabled" : "Disabled",
-              },
+        resources.push({
+          type: 'aws_s3_bucket_versioning',
+          name: `${resourceName}_versioning`,
+          config: {
+            bucket: `${bucketReference}.id`,
+            versioning_configuration: {
+              status: versioningEnabled ? "Enabled" : "Disabled",
             },
-            dependencies: [bucketReference],
-          })
-        }
+          },
+          dependencies: [bucketReference],
+        })
       }
 
       if (node.data.id === 'lambda') {
@@ -147,6 +126,10 @@ export class TerraformGenerator {
           },
           dependencies: [`aws_iam_role.${resourceName}_role`],
         })
+
+        // Add custom IAM policies based on edge connections
+        const customPolicies = this.generateCustomIAMPolicies(node, resourceName)
+        resources.push(...customPolicies)
 
         // Create default Lambda function ZIP file if using inline code
         const config = node.data.config as any
@@ -241,24 +224,24 @@ export class TerraformGenerator {
     const baseConfig = { ...(node.data.config as Record<string, any>) }
     const serviceId = node.data.id as string
 
-    // Apply provider-specific configurations
-    let config: Record<string, any>
-    switch (this.provider) {
-      case "aws":
-        config = this.generateAWSConfig(serviceId, baseConfig, node)
-        break
-      case "gcp":
-        config = this.generateGCPConfig(serviceId, baseConfig, node)
-        break
-      case "azure":
-        config = this.generateAzureConfig(serviceId, baseConfig, node)
-        break
-      default:
-        config = baseConfig
-    }
+      // Apply provider-specific configurations
+      let config: Record<string, any>
+      switch (this.provider) {
+        case "aws":
+          config = this.generateAWSConfig(serviceId, baseConfig, node)
+          break
+        case "gcp":
+          config = this.generateGCPConfig(serviceId, baseConfig, node)
+          break
+        case "azure":
+          config = this.generateAzureConfig(serviceId, baseConfig, node)
+          break
+        default:
+          config = baseConfig
+      }
 
-    // Enhance config based on connections
-    return this.enhanceConfigWithConnections(node, config)
+      // Enhance config based on connections
+      return this.enhanceConfigWithConnections(node, config)
   }
 
   // Enhance resource configuration based on connections
@@ -320,27 +303,19 @@ export class TerraformGenerator {
 
     switch (serviceId) {
       case "ec2":
-        // According to https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/instance
         return {
-          ami: config.ami || "ami-0abcdef1234567890", // Note: Use data source for dynamic AMI lookup in production
+          ami: config.ami || "ami-0abcdef1234567890",
           instance_type: config.instance_type || "t3.micro",
-          ...(config.key_name && { key_name: config.key_name }),
-          ...(config.subnet_id && { subnet_id: config.subnet_id }),
-          ...(config.vpc_security_group_ids && { vpc_security_group_ids: config.vpc_security_group_ids }),
-          ...(config.associate_public_ip_address !== undefined && { 
-            associate_public_ip_address: config.associate_public_ip_address 
-          }),
-          ...(config.user_data && { user_data: config.user_data }),
-          ...(config.iam_instance_profile && { iam_instance_profile: config.iam_instance_profile }),
+          key_name: config.key_name || null,
           tags: {
-            Name: config.name || `${node.data.name}-instance-${this.getStableSuffix(node.id)}`,
+            Name: config.name || `${node.data.name}-instance-${Date.now()}`,
             Environment: "terraform-generated",
           },
         }
 
       case "api_gateway":
         return {
-          name: config.name || `api-${this.getStableSuffix(node.id)}`,
+          name: config.name || `api-${Date.now()}`,
           description: config.description || "REST API",
           endpoint_configuration: config.endpoint_configuration ? {
             types: [config.endpoint_configuration],
@@ -350,24 +325,11 @@ export class TerraformGenerator {
         }
 
       case "dynamodb":
-        // According to https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/dynamodb_table
-        const hashKey = config.hash_key || "id"
         return {
-          name: config.table_name || `${this.sanitizeName(node.data.name as string)}-table-${this.getStableSuffix(node.id)}`,
+          name: config.table_name || `${this.sanitizeName(node.data.name as string)}-table-${Date.now()}`,
           billing_mode: config.billing_mode || "PAY_PER_REQUEST",
-          hash_key: hashKey,
+          hash_key: config.hash_key || "id",
           ...(config.range_key && { range_key: config.range_key }),
-          // Required: attribute definitions for keys
-          attribute: [
-            {
-              name: hashKey,
-              type: config.hash_key_type || "S" // S = String, N = Number, B = Binary
-            },
-            ...(config.range_key ? [{
-              name: config.range_key,
-              type: config.range_key_type || "S"
-            }] : [])
-          ],
           ...(config.billing_mode === "PROVISIONED" && {
             read_capacity: Number.parseInt(config.read_capacity) || 5,
             write_capacity: Number.parseInt(config.write_capacity) || 5,
@@ -389,7 +351,7 @@ export class TerraformGenerator {
 
       case "s3":
         return {
-          bucket: config.bucket_name || `${this.sanitizeName(node.data.name as string)}-bucket-${this.getStableSuffix(node.id)}`,
+          bucket: config.bucket_name || `${this.sanitizeName(node.data.name as string)}-bucket-${Date.now()}`,
           tags: {
             Name: config.name || node.data.name,
             Environment: "terraform-generated",
@@ -397,23 +359,16 @@ export class TerraformGenerator {
         }
 
       case "rds":
-        // According to https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/db_instance
-        const rdsIdentifier = config.identifier || `${this.sanitizeName(node.data.name as string)}-db-${this.getStableSuffix(node.id)}`
         return {
-          identifier: rdsIdentifier,
+          identifier: config.db_name || `${this.sanitizeName(node.data.name as string)}-db-${Date.now()}`,
           engine: config.engine || "mysql",
-          engine_version: config.engine_version || this.getEngineVersion(config.engine || "mysql"),
+          engine_version: this.getEngineVersion(config.engine || "mysql"),
           instance_class: config.instance_class || "db.t3.micro",
           allocated_storage: Number.parseInt(config.allocated_storage) || 20,
-          // db_name is optional and creates an initial database
-          ...(config.db_name && { db_name: config.db_name }),
-          username: config.username || "admin",
-          // Note: In production, use AWS Secrets Manager or similar for password management
-          password: config.password || "ChangeMe123!",
-          skip_final_snapshot: config.skip_final_snapshot !== false,
-          publicly_accessible: config.publicly_accessible || false,
-          // Storage encryption enabled by default for security
-          storage_encrypted: config.storage_encrypted !== false,
+          db_name: config.db_name || `mydb_${Date.now()}`,
+          username: "admin",
+          password: config.password || "password123",
+          skip_final_snapshot: true,
           tags: {
             Name: config.name || node.data.name,
             Environment: "terraform-generated",
@@ -421,29 +376,22 @@ export class TerraformGenerator {
         }
 
       case "lambda":
-        // According to https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/lambda_function
         const resourceName = this.sanitizeName((node.data.name as string) || (node.data.id as string))
         const useInlineCode = !config.s3_bucket && !config.s3_key
 
         return {
-          function_name: config.function_name || `${resourceName}-function-${this.getStableSuffix(node.id)}`,
-          runtime: config.runtime || "nodejs20.x", // Updated to newer LTS runtime
-          handler: config.handler || "index.handler",
+          function_name: config.function_name || `${resourceName}-function-${Date.now()}`,
+          runtime: config.runtime || "nodejs18.x",
+          handler: "index.handler",
           ...(useInlineCode ? {
             filename: `lambda-${resourceName}.zip`,
-            source_code_hash: `filebase64sha256("lambda-${resourceName}.zip")`,
           } : {
             s3_bucket: config.s3_bucket || `var.lambda_s3_bucket`,
             s3_key: config.s3_key || `var.lambda_s3_key`,
-            ...(config.s3_object_version && { s3_object_version: config.s3_object_version }),
           }),
           memory_size: Number.parseInt(config.memory_size) || 128,
           timeout: Number.parseInt(config.timeout) || 30,
           role: `aws_iam_role.${resourceName}_role.arn`,
-          ...(config.layers && { layers: config.layers }),
-          ...(config.reserved_concurrent_executions && { 
-            reserved_concurrent_executions: config.reserved_concurrent_executions 
-          }),
           tags: {
             Name: config.name || node.data.name,
             Environment: "terraform-generated",
@@ -463,7 +411,7 @@ export class TerraformGenerator {
 
       case "alb":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-alb-${this.getStableSuffix(node.id)}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-alb-${Date.now()}`,
           load_balancer_type: config.load_balancer_type || "application",
           scheme: config.scheme || "internet-facing",
           subnets: [this.getSubnetReference(node.id)],
@@ -475,35 +423,32 @@ export class TerraformGenerator {
         }
 
       case "sqs":
-        // According to https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/sqs_queue
-        let queueName = config.name || `${this.sanitizeName(node.data.name as string)}-queue-${this.getStableSuffix(node.id)}`
-        
         const sqsConfig: Record<string, any> = {
-          name: config.fifo_queue ? `${queueName}.fifo` : queueName,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-queue-${Date.now()}`,
           visibility_timeout_seconds: config.visibility_timeout_seconds || 30,
-          message_retention_seconds: config.message_retention_seconds || 345600, // 4 days (default)
+          message_retention_seconds: config.message_retention_seconds || 1209600,
           delay_seconds: config.delay_seconds || 0,
-          max_message_size: config.max_message_size || 262144, // 256 KB (default)
-          receive_wait_time_seconds: config.receive_wait_time_seconds || 0,
-          ...(config.fifo_queue && {
-            fifo_queue: true,
-            ...(config.content_based_deduplication && {
-              content_based_deduplication: true
-            }),
-            ...(config.deduplication_scope && { deduplication_scope: config.deduplication_scope }),
-            ...(config.fifo_throughput_limit && { fifo_throughput_limit: config.fifo_throughput_limit }),
-          }),
-          ...(config.kms_master_key_id && {
-            kms_master_key_id: config.kms_master_key_id,
-            kms_data_key_reuse_period_seconds: config.kms_data_key_reuse_period_seconds || 300,
-          }),
-          ...(config.sqs_managed_sse_enabled !== undefined && {
-            sqs_managed_sse_enabled: config.sqs_managed_sse_enabled
-          }),
           tags: {
             Name: config.name || node.data.name,
             Environment: "terraform-generated",
           },
+        }
+
+        // Add FIFO queue configuration if enabled
+        if (config.fifo_queue) {
+          sqsConfig.name = `${sqsConfig.name}.fifo`
+          sqsConfig.fifo_queue = true
+          if (config.content_based_deduplication) {
+            sqsConfig.content_based_deduplication = true
+          }
+        }
+
+        // Add KMS encryption if configured
+        if (config.kms_master_key_id) {
+          sqsConfig.kms_master_key_id = config.kms_master_key_id
+          if (config.kms_data_key_reuse_period_seconds) {
+            sqsConfig.kms_data_key_reuse_period_seconds = config.kms_data_key_reuse_period_seconds
+          }
         }
 
         return sqsConfig
@@ -517,7 +462,7 @@ export class TerraformGenerator {
     switch (serviceId) {
       case "compute":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-instance-${this.getStableSuffix(node.id)}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-instance-${Date.now()}`,
           machine_type: config.machine_type || "e2-micro",
           zone: config.zone || "us-central1-a",
           boot_disk: {
@@ -536,7 +481,7 @@ export class TerraformGenerator {
 
       case "storage":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-bucket-${this.getStableSuffix(node.id)}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-bucket-${Date.now()}`,
           location: config.location || "US",
           storage_class: config.storage_class || "STANDARD",
           labels: {
@@ -546,7 +491,7 @@ export class TerraformGenerator {
 
       case "sql":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-db-${this.getStableSuffix(node.id)}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-db-${Date.now()}`,
           database_version: config.database_version || "MYSQL_8_0",
           tier: config.tier || "db-f1-micro",
           settings: {
@@ -564,7 +509,7 @@ export class TerraformGenerator {
     switch (serviceId) {
       case "vm":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}-vm-${this.getStableSuffix(node.id)}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}-vm-${Date.now()}`,
           resource_group_name: "azurerm_resource_group.main.name",
           location: config.location || "East US",
           size: config.vm_size || "Standard_B1s",
@@ -588,7 +533,7 @@ export class TerraformGenerator {
 
       case "blob":
         return {
-          name: config.name || `${this.sanitizeName(node.data.name as string)}storage-${this.getStableSuffix(node.id)}`,
+          name: config.name || `${this.sanitizeName(node.data.name as string)}storage-${Date.now()}`,
           resource_group_name: "azurerm_resource_group.main.name",
           location: config.location || "East US",
           account_tier: config.account_tier || "Standard",
@@ -610,17 +555,9 @@ export class TerraformGenerator {
       if (edge.target === nodeId) {
         const sourceNode = this.nodes.find((n) => n.id === edge.source)
         if (sourceNode) {
-          // Safely get the name with fallback to node.id (always present in React Flow)
-          const nodeName = String(sourceNode.data?.name || sourceNode.data?.id || sourceNode.id)
-          // Get terraformType without fallback - skip if missing
-          const terraformType = sourceNode.data?.terraformType
-          
-          // Only add dependency if we have both valid values
-          if (nodeName && terraformType) {
-            dependencies.push(
-              `${terraformType}.${this.sanitizeName(nodeName)}`,
-            )
-          }
+          dependencies.push(
+            `${sourceNode.data.terraformType as string}.${this.sanitizeName((sourceNode.data.name as string) || (sourceNode.data.id as string))}`,
+          )
         }
       }
     })
@@ -633,38 +570,6 @@ export class TerraformGenerator {
     const incoming = this.edges.filter(edge => edge.target === nodeId)
     const outgoing = this.edges.filter(edge => edge.source === nodeId)
     return { incoming, outgoing }
-  }
-
-  // Generate connection comments for a resource
-  private generateConnectionComments(nodeId: string): string {
-    const { incoming, outgoing } = this.getNodeConnections(nodeId)
-    let comments = ""
-
-    if (incoming.length > 0) {
-      comments += "  # Incoming connections:\n"
-      incoming.forEach(edge => {
-        const sourceNode = this.nodes.find(n => n.id === edge.source)
-        if (sourceNode) {
-          const relationship = edge.data?.relationship || "connects_to"
-          const description = edge.data?.description || ""
-          comments += `  # - ${sourceNode.data?.name || sourceNode.id} (${relationship})${description ? ': ' + description : ''}\n`
-        }
-      })
-    }
-
-    if (outgoing.length > 0) {
-      comments += "  # Outgoing connections:\n"
-      outgoing.forEach(edge => {
-        const targetNode = this.nodes.find(n => n.id === edge.target)
-        if (targetNode) {
-          const relationship = edge.data?.relationship || "connects_to"
-          const description = edge.data?.description || ""
-          comments += `  # - ${targetNode.data?.name || targetNode.id} (${relationship})${description ? ': ' + description : ''}\n`
-        }
-      })
-    }
-
-    return comments
   }
 
   private generateVariables(): Record<string, any> {
@@ -707,9 +612,7 @@ export class TerraformGenerator {
     const outputs: Record<string, any> = {}
 
     this.nodes.forEach((node) => {
-      // Safely get resource name - node.id is always present in React Flow
-      const nodeName = String(node.data?.name || node.data?.id || node.id)
-      const resourceName = this.sanitizeName(nodeName)
+      const resourceName = this.sanitizeName((node.data.name as string) || (node.data.id as string))
       const resourceType = node.data.terraformType as string
 
       switch (node.data.id) {
@@ -800,28 +703,11 @@ export class TerraformGenerator {
   }
 
   private sanitizeName(name: string): string {
-    // Handle undefined, null, or non-string values
-    if (!name || typeof name !== 'string') {
-      console.warn('sanitizeName received invalid input:', name)
-      return 'unknown_resource'
-    }
-    
     return name
       .toLowerCase()
       .replace(/[^a-z0-9]/g, "_")
       .replace(/_+/g, "_")
       .replace(/^_|_$/g, "")
-  }
-
-  // Generate a stable short hash from node.id for deterministic resource naming
-  private getStableSuffix(nodeId: string): string {
-    let hash = 0
-    for (let i = 0; i < nodeId.length; i++) {
-      const char = nodeId.charCodeAt(i)
-      hash = ((hash << 5) - hash) + char
-      hash = hash & hash // Convert to 32bit integer
-    }
-    return Math.abs(hash).toString(36).substring(0, 6)
   }
 
   private getDefaultRegion(): string {
@@ -838,15 +724,12 @@ export class TerraformGenerator {
   }
 
   private getEngineVersion(engine: string): string {
-    // Current stable versions according to AWS RDS documentation
     const versions: Record<string, string> = {
-      mysql: "8.0.35",
-      postgres: "16.1",
-      mariadb: "10.11.6",
-      "aurora-mysql": "8.0.mysql_aurora.3.04.0",
-      "aurora-postgresql": "16.1",
+      mysql: "8.0",
+      postgres: "13.7",
+      mariadb: "10.6",
     }
-    return versions[engine] || "8.0.35"
+    return versions[engine] || "8.0"
   }
 
   private getSecurityGroupReferences(nodeId: string): string[] {
@@ -895,22 +778,10 @@ export class TerraformGenerator {
     // Resources
     terraformCode += "# Resources\n"
     output.resources.forEach((resource) => {
-      // Find the node for this resource using the stored node ID
-      const node = resource.nodeId ? this.nodes.find(n => n.id === resource.nodeId) : null
-
-      // Add connection comments if we have edges
-      if (node && this.edges.length > 0) {
-        const connectionComments = this.generateConnectionComments(node.id)
-        if (connectionComments) {
-          terraformCode += connectionComments
-        }
-      }
-
       terraformCode += `resource "${resource.type}" "${resource.name}" {\n`
       terraformCode += this.formatResourceConfig(resource.config, 1)
 
       if (resource.dependencies && resource.dependencies.length > 0) {
-        terraformCode += `\n  # Dependencies from connections\n`
         terraformCode += `  depends_on = [${resource.dependencies.map((dep) => `${dep}`).join(", ")}]\n`
       }
 
@@ -923,7 +794,10 @@ export class TerraformGenerator {
       Object.entries(output.outputs).forEach(([name, config]) => {
         terraformCode += `output "${name}" {\n`
         Object.entries(config as Record<string, any>).forEach(([key, value]) => {
-          if (typeof value === "string") {
+          if (key === "value" && typeof value === "string") {
+            // Fix the output value bug - use interpolation syntax without quotes
+            terraformCode += `  ${key} = ${value}\n`
+          } else if (typeof value === "string") {
             terraformCode += `  ${key} = "${value}"\n`
           } else {
             terraformCode += `  ${key} = ${value}\n`
@@ -939,34 +813,34 @@ export class TerraformGenerator {
   generateProviderBlock(): string {
     switch (this.provider) {
       case "aws":
-        // According to https://registry.terraform.io/providers/hashicorp/aws/latest
-        return `terraform {
-  required_version = ">= 1.0"
-  
+        // Check if there are Lambda functions that need the archive provider
+        const hasLambda = this.nodes.some(node => node.data.id === 'lambda')
+        
+        let providersBlock = `terraform {
   required_providers {
     aws = {
       source  = "hashicorp/aws"
       version = "~> 5.0"
-    }
+    }`
+        
+        if (hasLambda) {
+          providersBlock += `
     archive = {
       source  = "hashicorp/archive"
-      version = "~> 2.4"
-    }
+      version = "~> 2.0"
+    }`
+        }
+        
+        providersBlock += `
   }
 }
 
 provider "aws" {
   region = var.region
-  
-  default_tags {
-    tags = {
-      ManagedBy   = "Terraform"
-      Environment = var.environment
-      Project     = "Cloudist"
-    }
-  }
 }
 `
+        
+        return providersBlock
 
       case "gcp":
         return `terraform {
@@ -1066,5 +940,162 @@ resource "azurerm_resource_group" "main" {
     })
 
     return result
+  }
+
+  // Generate custom IAM policies based on edge connections
+  private generateCustomIAMPolicies(node: Node, resourceName: string): TerraformResource[] {
+    const policies: TerraformResource[] = []
+    const { outgoing } = this.getNodeConnections(node.id)
+    
+    if (outgoing.length === 0) {
+      return policies
+    }
+
+    // Group connections by target service type
+    const connectionsByService: Record<string, Edge[]> = {}
+    outgoing.forEach(edge => {
+      const targetNode = this.nodes.find(n => n.id === edge.target)
+      if (targetNode) {
+        const serviceType = targetNode.data?.id as string
+        if (!connectionsByService[serviceType]) {
+          connectionsByService[serviceType] = []
+        }
+        connectionsByService[serviceType].push(edge)
+      }
+    })
+
+    // Generate policies for each service type
+    Object.entries(connectionsByService).forEach(([serviceType, edges]) => {
+      const policyStatements: any[] = []
+      
+      edges.forEach(edge => {
+        const targetNode = this.nodes.find(n => n.id === edge.target)
+        if (!targetNode) return
+        
+        const targetName = this.sanitizeName(String(targetNode.data?.name || targetNode.data?.id || targetNode.id))
+        const relationship = edge.data?.relationship || 'accesses'
+        
+        // Generate policy statements based on service type and relationship
+        switch (serviceType) {
+          case 's3':
+            if (relationship === 'accesses' || relationship === 'reads' || relationship === 'writes') {
+              policyStatements.push({
+                Effect: "Allow",
+                Action: [
+                  "s3:GetObject",
+                  "s3:PutObject",
+                  "s3:DeleteObject",
+                  "s3:ListBucket"
+                ],
+                Resource: [
+                  `aws_s3_bucket.${targetName}.arn`,
+                  `aws_s3_bucket.${targetName}.arn/*`
+                ]
+              })
+            }
+            break
+            
+          case 'dynamodb':
+            if (relationship === 'accesses' || relationship === 'reads' || relationship === 'writes') {
+              policyStatements.push({
+                Effect: "Allow",
+                Action: [
+                  "dynamodb:GetItem",
+                  "dynamodb:PutItem",
+                  "dynamodb:UpdateItem",
+                  "dynamodb:DeleteItem",
+                  "dynamodb:Query",
+                  "dynamodb:Scan"
+                ],
+                Resource: `aws_dynamodb_table.${targetName}.arn`
+              })
+            }
+            break
+            
+          case 'sqs':
+            if (relationship === 'sends_to' || relationship === 'consumes') {
+              policyStatements.push({
+                Effect: "Allow",
+                Action: [
+                  "sqs:SendMessage",
+                  "sqs:ReceiveMessage",
+                  "sqs:DeleteMessage",
+                  "sqs:GetQueueAttributes"
+                ],
+                Resource: `aws_sqs_queue.${targetName}.arn`
+              })
+            }
+            break
+            
+          case 'sns':
+            if (relationship === 'publishes_to' || relationship === 'subscribes_to') {
+              policyStatements.push({
+                Effect: "Allow",
+                Action: [
+                  "sns:Publish",
+                  "sns:Subscribe",
+                  "sns:Unsubscribe"
+                ],
+                Resource: `aws_sns_topic.${targetName}.arn`
+              })
+            }
+            break
+            
+          case 'rds':
+            if (relationship === 'connects_to') {
+              policyStatements.push({
+                Effect: "Allow",
+                Action: [
+                  "rds-db:connect"
+                ],
+                Resource: `arn:aws:rds-db:${this.getRegion()}:*:dbuser/${targetName}/*`
+              })
+            }
+            break
+        }
+      })
+
+      // Create the custom IAM policy if we have statements
+      if (policyStatements.length > 0) {
+        const serviceTypes = Object.keys(connectionsByService).join('_')
+        policies.push({
+          type: 'aws_iam_policy',
+          name: `${resourceName}_${serviceTypes}_policy`,
+          config: {
+            name: `${resourceName}-${serviceTypes}-access-policy`,
+            policy: `jsonencode({
+  "Version": "2012-10-17",
+  "Statement": ${JSON.stringify(policyStatements, null, 2)}
+})`,
+            tags: {
+              Name: `${resourceName}-${serviceTypes}-policy`,
+              Environment: "terraform-generated",
+            },
+          },
+          dependencies: [],
+        })
+
+        // Attach the policy to the role
+        policies.push({
+          type: 'aws_iam_role_policy_attachment',
+          name: `${resourceName}_${serviceTypes}_policy_attachment`,
+          config: {
+            role: `aws_iam_role.${resourceName}_role.name`,
+            policy_arn: `aws_iam_policy.${resourceName}_${serviceTypes}_policy.arn`,
+          },
+          dependencies: [
+            `aws_iam_role.${resourceName}_role`,
+            `aws_iam_policy.${resourceName}_${serviceTypes}_policy`
+          ],
+        })
+      }
+    })
+
+    return policies
+  }
+
+  // Helper method to get region (used in RDS policy)
+  private getRegion(): string {
+    return 'us-east-1' // Default region, could be made configurable
   }
 }

@@ -39,8 +39,8 @@ async function deploySupabaseInfrastructure(
   if (!supabaseCredentials) {
     return {
       success: false,
-      error: 'Supabase credentials not found. Please configure your Supabase access token.',
-      logs: ['Error: Missing Supabase credentials'],
+      error: 'Supabase credentials not found. Please configure your Supabase access token in settings.',
+      logs: ['Error: Missing Supabase credentials - please check your settings'],
     }
   }
 
@@ -72,11 +72,11 @@ async function deploySupabaseInfrastructure(
       success: true,
       projectId: result.projectId,
       outputs: {
-        project_url: result.projectUrl,
         anon_key: result.anonKey,
         service_role_key: result.serviceRoleKey,
         database_host: result.databaseHost,
         database_name: result.databaseName,
+        database_resource: result.databaseResource,
       },
       logs: result.logs || [],
     }
@@ -951,33 +951,62 @@ export async function deleteWorkspace(workspaceId: string): Promise<boolean> {
 /**
  * Test credentials by making a test API call
  */
-export async function testCredentials(provider: string): Promise<{ valid: boolean; message: string }> {
+export async function testCredentials(provider: string, credentials?: any): Promise<{ success: boolean; error?: string; message?: string }> {
   try {
-    const credentials = CredentialManager.getCredentials(provider as keyof typeof CredentialManager.prototype)
+    const creds = credentials || CredentialManager.getCredentials(provider as keyof typeof CredentialManager.prototype)
 
-    if (!credentials) {
-      return { valid: false, message: 'No credentials found for provider' }
+    if (!creds) {
+      return { success: false, error: 'No credentials found for provider' }
     }
 
-    // Test the credentials by making a simple API call that requires authentication
-    // For AWS, we can try to validate the credentials format and make a simple AWS API call
+    // Test Supabase credentials by making an API call to list organizations
+    if (provider === 'supabase') {
+      const supabaseCredentials = creds as any
+      const validationErrors = CredentialManager.validateSupabaseCredentials(supabaseCredentials)
+
+      if (validationErrors.length > 0) {
+        return { success: false, error: `Invalid Supabase credentials: ${validationErrors.join(', ')}` }
+      }
+
+      try {
+        // Test the credentials by making a call to the Supabase Management API
+        const response = await fetch('/api/supabase/test', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            credentials: supabaseCredentials,
+          }),
+        })
+
+        const result = await response.json()
+        
+        if (response.ok && result.success) {
+          return { success: true, message: `Successfully authenticated. Found ${result.organizationCount} organization(s).` }
+        } else {
+          return { success: false, error: result.error || 'Failed to authenticate with Supabase' }
+        }
+      } catch (apiError) {
+        return { success: false, error: `API test failed: ${apiError instanceof Error ? apiError.message : 'Unknown error'}` }
+      }
+    }
+
+    // Test AWS credentials
     if (provider === 'aws') {
-      const awsCredentials = credentials as any
+      const awsCredentials = creds as any
       const validationErrors = CredentialManager.validateAWSCredentials(awsCredentials)
 
       if (validationErrors.length > 0) {
-        return { valid: false, message: `Invalid AWS credentials: ${validationErrors.join(', ')}` }
+        return { success: false, error: `Invalid AWS credentials: ${validationErrors.join(', ')}` }
       }
 
-      // Try to make a simple AWS API call to test the credentials
-      // For now, we'll just return valid since the format validation passed
-      // In a real implementation, you might make a call to AWS STS or similar
-      return { valid: true, message: 'AWS credentials format is valid' }
+      return { success: true, message: 'AWS credentials format is valid' }
     }
 
-    return { valid: true, message: 'Credentials are valid' }
+    return { success: true, message: 'Credentials are valid' }
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : 'Unknown error'
-    return { valid: false, message: `Credential test failed: ${errorMessage}` }
+    return { success: false, error: `Credential test failed: ${errorMessage}` }
   }
 }

@@ -1,6 +1,6 @@
 "use client"
 
-import { Dashboard } from "@/components/dashboard"
+import { Dashboard } from "@/components/layout/dashboard"
 
 export default function HomePage() {
   return (

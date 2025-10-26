@@ -142,7 +142,7 @@ ${getBlockTypeMapping(provider)}
 
 Your response must be 100% valid .tf file syntax that can be directly saved and run with terraform commands.`
 
-    console.log('🤖 Calling Claude API for Terraform generation...')
+    console.log('🤖 Calling OpenAI API for Terraform generation...')
 
     const response = await anthropic.messages.create({
       model: 'claude-3-7-sonnet-20250219',
@@ -188,27 +188,27 @@ variable "region" { ... }
 output "instance_id" { ... }`,
       messages: [
         {
+          role: 'system',
+          content: 'You are a Terraform code generator. Output ONLY valid Terraform (.tf) syntax. Do NOT include usage instructions, setup steps, explanatory notes, or any text that is not valid Terraform code. Your entire response must be valid HCL that can be saved directly to a .tf file and executed with terraform commands. End your response immediately after the last closing brace of your code.'
+        },
+        {
           role: 'user',
           content: prompt
         }
       ]
     })
 
-    console.log('✅ Claude response received')
+    console.log('✅ OpenAI response received')
 
     // Extract the generated Terraform code
-    const textContent = response.content.find(
-      (block): block is Anthropic.TextBlock => block.type === 'text'
-    )
+    const terraformCode = response.choices[0]?.message?.content
 
-    if (!textContent?.text) {
+    if (!terraformCode) {
       throw new Error('No Terraform code generated')
     }
 
-    let terraformCode = textContent.text
-
-    // Clean up only markdown code fences if Claude adds them despite instructions
-    terraformCode = terraformCode
+    // Clean up only markdown code fences if OpenAI adds them despite instructions
+    let cleanedTerraformCode = terraformCode
       .replace(/```terraform\n?/g, '')
       .replace(/```hcl\n?/g, '')
       .replace(/```\n?/g, '')
@@ -224,7 +224,7 @@ output "instance_id" { ... }`,
 
     return NextResponse.json({
       success: true,
-      terraformCode,
+      terraformCode: cleanedTerraformCode,
       metadata: {
         blocksCount: blocks.length,
         connectionsCount: connections?.length || 0,

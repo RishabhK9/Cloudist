@@ -2,7 +2,7 @@ import type { Edge, Node } from '@xyflow/react'
 
 export interface DeploymentRequest {
   name: string
-  provider: 'aws' | 'gcp' | 'azure'
+  provider: 'aws' | 'gcp' | 'azure' | 'supabase' | 'hybrid'
   nodes: Node[]
   edges: Edge[]
   autoApprove?: boolean

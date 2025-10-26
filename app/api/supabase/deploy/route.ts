@@ -8,18 +8,38 @@ export interface SupabaseDeploymentRequest {
   edges: Edge[]
   credentials: {
     accessToken: string
-    organizationId?: string
   }
 }
 
 export interface SupabaseDeploymentResult {
   success: boolean
   projectId?: string
-  projectUrl?: string
   anonKey?: string
   serviceRoleKey?: string
   databaseHost?: string
   databaseName?: string
+  databaseResource?: {
+    id: string
+    name: string
+    type: string
+    provider: string
+    config: {
+      project_id: string
+      project_name: string
+      database_host: string
+      database_name: string
+      database_port: number
+      database_user: string
+      database_password: string
+      anon_key: string
+      service_role_key: string
+      region: string
+      plan: string
+      postgres_version: string
+      created_at: string
+      status: string
+    }
+  }
   error?: string
   logs?: string[]
 }
@@ -43,7 +63,7 @@ export async function POST(request: NextRequest) {
 
     // Extract database configuration from nodes
     const databaseNode = body.nodes.find(
-      (node) => node.data?.provider === 'supabase' && node.data?.id === 'database'
+      (node) => node.data?.provider === 'supabase' && node.data?.type === 'supabase_database'
     )
 
     if (!databaseNode) {
@@ -67,28 +87,54 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Validate project name format (Supabase requirements)
+    const projectNamePattern = /^[a-z0-9-]+$/
+    if (!projectNamePattern.test(config.project_name)) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Project name must contain only lowercase letters, numbers, and hyphens.',
+        },
+        { status: 400 }
+      )
+    }
+
+    // Validate password length
+    if (config.db_password.length < 6) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'Database password must be at least 6 characters long.',
+        },
+        { status: 400 }
+      )
+    }
+
     // Initialize Supabase API service
     const supabaseApi = new SupabaseApiService(body.credentials)
 
-    // Get organization ID if not provided
-    let organizationId = body.credentials.organizationId
-    if (!organizationId) {
-      console.log('🔍 Fetching organization ID...')
-      const orgs = await supabaseApi.listOrganizations()
-      if (orgs.length === 0) {
-        return NextResponse.json(
-          {
-            success: false,
-            error: 'No organizations found. Please ensure you have access to a Supabase organization.',
-          },
-          { status: 400 }
-        )
-      }
-      organizationId = orgs[0].id
-      console.log('✅ Using organization:', organizationId)
-    }
-
     const logs: string[] = []
+    logs.push('Initializing Supabase deployment...')
+
+    // Get organization ID automatically
+    console.log('🔍 Fetching organization ID...')
+    logs.push('Fetching organization information...')
+    
+    const orgs = await supabaseApi.listOrganizations()
+    if (orgs.length === 0) {
+      return NextResponse.json(
+        {
+          success: false,
+          error: 'No organizations found. Please ensure you have access to a Supabase organization.',
+        },
+        { status: 400 }
+      )
+    }
+    
+    const organizationId = orgs[0].id
+    console.log('✅ Using organization:', organizationId)
+    logs.push(`Using organization: ${orgs[0].name} (${organizationId})`)
+
     logs.push('Starting Supabase project creation...')
     logs.push(`Project name: ${config.project_name}`)
     logs.push(`Region: ${config.region || 'us-east-1'}`)
@@ -126,17 +172,44 @@ export async function POST(request: NextRequest) {
     console.log('✅ API keys retrieved')
     logs.push('API keys retrieved successfully')
 
-    // Build project URL
-    const projectUrl = `https://${project.id}.supabase.co`
+    // Create database resource using project connection details
+    console.log('🗄️ Creating database resource...')
+    logs.push('Setting up database resource...')
+
+    const databaseResource = {
+      id: `supabase-db-${project.id}`,
+      name: `${config.project_name}-database`,
+      type: 'supabase_database',
+      provider: 'supabase',
+      config: {
+        project_id: project.id,
+        project_name: config.project_name,
+        database_host: project.database?.host || readyProject.database?.host,
+        database_name: 'postgres',
+        database_port: 5432,
+        database_user: 'postgres',
+        database_password: config.db_password,
+        anon_key: apiKeys.anon,
+        service_role_key: apiKeys.service_role,
+        region: config.region || 'us-east-1',
+        plan: config.plan || 'free',
+        postgres_version: 'Latest (Auto)',
+        created_at: new Date().toISOString(),
+        status: 'active'
+      }
+    }
+
+    logs.push('Database resource created successfully!')
+    console.log('✅ Database resource created:', databaseResource.id)
 
     const result: SupabaseDeploymentResult = {
       success: true,
       projectId: project.id,
-      projectUrl,
       anonKey: apiKeys.anon,
       serviceRoleKey: apiKeys.service_role,
       databaseHost: project.database?.host || readyProject.database?.host,
       databaseName: 'postgres',
+      databaseResource: databaseResource,
       logs,
     }
 

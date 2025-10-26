@@ -18,7 +18,6 @@ export interface AzureCredentials {
 
 export interface SupabaseCredentials {
   accessToken: string
-  organizationId?: string
 }
 
 export interface Credentials {
@@ -217,8 +216,6 @@ export class CredentialManager {
     } else if (credentials.accessToken.length < 20) {
       errors.push('Access Token appears to be invalid (too short)')
     }
-    
-    // Organization ID is optional - will be fetched from API if not provided
     
     return errors
   }

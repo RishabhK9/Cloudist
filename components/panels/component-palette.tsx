@@ -273,7 +273,17 @@ interface ComponentPaletteProps {
 
 export function ComponentPalette({ onAddBlock }: ComponentPaletteProps) {
   const handleDragStart = (e: React.DragEvent, template: BlockTemplate) => {
-    e.dataTransfer.setData("blockTemplate", JSON.stringify(template))
+    // Convert block template to service format for compatibility with infrastructure canvas
+    const service = {
+      id: template.type,
+      name: template.name,
+      icon: template.icon,
+      category: template.category,
+      defaultConfig: template.defaultConfig,
+      terraformType: template.type
+    }
+    e.dataTransfer.setData("application/reactflow", JSON.stringify(service))
+    e.dataTransfer.effectAllowed = "move"
   }
 
   const categories = [

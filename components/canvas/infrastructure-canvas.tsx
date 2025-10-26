@@ -8,8 +8,18 @@ import {
   SelectTrigger,
   SelectValue
 } from "@/components/ui/select"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Input } from "@/components/ui/input"
+import { Label } from "@/components/ui/label"
+import { ComponentPalette } from "@/components/panels/component-palette"
 import { deployInfrastructure, getDeploymentStatus } from "@/lib/api-service"
-import { ConfigLoader } from "@/lib/config-loader"
 import { CredentialManager } from "@/lib/credential-manager"
 import { InfrastructureCanvasProps } from "@/types"
 import type { DeploymentStatus } from "@/types/deployment"
@@ -36,7 +46,8 @@ import {
   Download,
   Play,
   Brain,
-  Save
+  Save,
+  Settings
 } from "lucide-react"
 import GlassyPaneContainer from '@/src/cedar/components/containers/GlassyPaneContainer'
 import { useCallback, useEffect, useRef, useState, type DragEvent } from "react"
@@ -100,15 +111,89 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   const [lastSaved, setLastSaved] = useState<string | null>(null)
   const [rightPanelWidth, setRightPanelWidth] = useState(384) // 384px = w-96
   const [isResizing, setIsResizing] = useState(false)
+  
+  // Settings dialog state
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false)
+  const [awsAccessKey, setAwsAccessKey] = useState("")
+  const [awsSecretKey, setAwsSecretKey] = useState("")
+  const [awsRegion, setAwsRegion] = useState("us-east-1")
+  const [supabaseUrl, setSupabaseUrl] = useState("")
+  const [supabaseKey, setSupabaseKey] = useState("")
+  const [supabaseAccessToken, setSupabaseAccessToken] = useState("")
+
+  // Load credentials on component mount
+  useEffect(() => {
+    const loadCredentials = async () => {
+      try {
+        const awsCreds = await CredentialManager.getCredentials('aws')
+        const supabaseCreds = await CredentialManager.getCredentials('supabase')
+        
+        if (awsCreds) {
+          setAwsAccessKey(awsCreds.accessKeyId || "")
+          setAwsSecretKey(awsCreds.secretAccessKey || "")
+          setAwsRegion(awsCreds.region || "us-east-1")
+        }
+        
+        if (supabaseCreds) {
+          setSupabaseUrl(supabaseCreds.url || "")
+          setSupabaseKey(supabaseCreds.key || "")
+          setSupabaseAccessToken(supabaseCreds.accessToken || "")
+        }
+      } catch (error) {
+        console.error('Failed to load credentials:', error)
+      }
+    }
+    
+    loadCredentials()
+  }, [])
+
+  // Save credentials
+  const handleSaveCredentials = async () => {
+    try {
+      // Save AWS credentials
+      if (awsAccessKey && awsSecretKey) {
+        await CredentialManager.saveCredentials('aws', {
+          accessKeyId: awsAccessKey,
+          secretAccessKey: awsSecretKey,
+          region: awsRegion
+        })
+      }
+      
+      // Save Supabase credentials
+      if (supabaseUrl && supabaseKey && supabaseAccessToken) {
+        await CredentialManager.saveCredentials('supabase', {
+          url: supabaseUrl,
+          key: supabaseKey,
+          accessToken: supabaseAccessToken
+        })
+        
+        // Set environment variable for Supabase access token
+        if (typeof window !== 'undefined') {
+          // Store in localStorage for the current session
+          localStorage.setItem('SUPABASE_ACCESS_TOKEN', supabaseAccessToken)
+          console.log('Supabase access token environment variable set')
+        }
+      }
+      
+      setIsSettingsOpen(false)
+      console.log('Credentials saved successfully')
+    } catch (error) {
+      console.error('Failed to save credentials:', error)
+    }
+  }
 
   // Save current canvas state to project
   const saveCurrentState = useCallback(() => {
+    console.log('Save button clicked, projectId:', projectId);
     if (projectId) {
       setIsSaving(true)
       ProjectCanvasUtils.saveCanvasState(projectId, nodes, edges)
       setLastSaved(new Date().toISOString())
       
       setTimeout(() => setIsSaving(false), 1000) // Show saving indicator briefly
+      console.log('Save completed for project:', projectId);
+    } else {
+      console.log('No projectId available for saving');
     }
   }, [projectId, nodes, edges])
 
@@ -152,10 +237,38 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   // Canvas add functions for AI infrastructure creation
   const addNodesToCanvas = useCallback((newNodes: Node[]) => {
     setNodes((currentNodes) => {
-      const updatedNodes = [...currentNodes, ...newNodes]
+      const updatedNodes = [...currentNodes, ...newNodes.map(node => {
+        const nodeId = node.id
+        return {
+          ...node,
+          data: {
+            ...node.data,
+            onDelete: () => {
+              // Remove the node and any connected edges
+              const updatedNodes = currentNodes.filter(n => n.id !== nodeId)
+              const updatedEdges = edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
+              
+              // Set flag to prevent history sync from overwriting this change
+              isSyncingFromHistory.current = true
+              
+              // Update state
+              setNodes(updatedNodes)
+              setEdges(updatedEdges)
+              
+              // Save state with the complete new state
+              saveState(updatedNodes, updatedEdges, 'delete_node')
+              
+              // Reset flag after a short delay to allow state updates to complete
+              setTimeout(() => {
+                isSyncingFromHistory.current = false
+              }, 50)
+            }
+          }
+        }
+      })]
       return updatedNodes
     })
-  }, [])
+  }, [edges, saveState])
 
   const addEdgesToCanvas = useCallback((newEdges: Edge[]) => {
     setEdges((currentEdges) => {
@@ -221,31 +334,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
     },
   }
 
-  const [services, setServices] = useState<any[]>([])
-  const [categories, setCategories] = useState<string[]>([])
-  const [servicesLoaded, setServicesLoaded] = useState(false)
-
   const config = providerConfig[provider as keyof typeof providerConfig]
-
-  // Load services from config files
-  useEffect(() => {
-    const loadServices = async () => {
-      try {
-        const serviceConfigs = await ConfigLoader.loadAllConfigs()
-        const providerServices = Object.values(serviceConfigs[provider] || {})
-        setServices(providerServices)
-        setCategories([...new Set(providerServices.map((s) => s.category))])
-        setServicesLoaded(true)
-      } catch (error) {
-        console.error('Failed to load services:', error)
-        setServices([])
-        setCategories([])
-        setServicesLoaded(true)
-      }
-    }
-
-    loadServices()
-  }, [provider])
 
   const onConnect: OnConnect = useCallback(
     (params: Connection | Edge) => {
@@ -318,8 +407,9 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
         y: event.clientY,
       })
 
+      const nodeId = getId()
       const newNode: Node = {
-        id: getId(),
+        id: nodeId,
         type: "cloudService",
         position,
         data: {
@@ -327,6 +417,29 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
           provider: getProviderFromServiceId(service.id),
           config: service.defaultConfig || {},
           terraformType: service.terraformType,
+          onDelete: () => {
+            console.log('onDelete called for node:', nodeId);
+            // Remove the node and any connected edges
+            const updatedNodes = nodes.filter(node => node.id !== nodeId)
+            const updatedEdges = edges.filter(edge => edge.source !== nodeId && edge.target !== nodeId)
+            
+            console.log('Filtered nodes:', updatedNodes.length, 'Filtered edges:', updatedEdges.length);
+            
+            // Set flag to prevent history sync from overwriting this change
+            isSyncingFromHistory.current = true
+            
+            // Update state
+            setNodes(updatedNodes)
+            setEdges(updatedEdges)
+            
+            // Save state with the complete new state
+            saveState(updatedNodes, updatedEdges, 'delete_node')
+            
+            // Reset flag after a short delay to allow state updates to complete
+            setTimeout(() => {
+              isSyncingFromHistory.current = false
+            }, 50)
+          }
         },
       }
 
@@ -447,7 +560,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     try {
       // Generate fresh terraform files before review
-      const freshTerraformFiles = await generateTerraformFilesForReview()
+      const freshTerraformFiles = generateTerraformFilesForReview()
       
       // Create an AbortController for timeout
       const controller = new AbortController()
@@ -486,7 +599,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   }
 
   // Generate Terraform code from nodes
-  const generateTerraformCode = async () => {
+  const generateTerraformCode = () => {
     if (nodes.length === 0) {
       return `# No resources defined yet
 # Drag and drop services from the sidebar to generate Terraform code`
@@ -494,7 +607,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
 
     try {
       const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
-      const code = await terraformGenerator.generateTerraformCode()
+      const code = terraformGenerator.generateTerraformCode()
       
       return code
     } catch (error) {
@@ -524,8 +637,8 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
   }
 
   // Helper function to generate Terraform files and return them (for AI review)
-  const generateTerraformFilesForReview = async () => {
-    const mainTf = await generateTerraformCode()
+  const generateTerraformFilesForReview = () => {
+    const mainTf = generateTerraformCode()
     
     // Generate separate files using TerraformGenerator
     let variablesTf: string = ""
@@ -535,7 +648,7 @@ export function InfrastructureCanvas({ provider, onBack, projectId }: Infrastruc
     if (nodes.length > 0) {
       try {
         const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
-        const output = await terraformGenerator.generate()
+        const output = terraformGenerator.generate()
         
         // Generate variables.tf
         if (Object.keys(output.variables).length > 0) {
@@ -687,19 +800,26 @@ provider "aws" {
   }
 
   // Helper function to generate Terraform files (updates state)
-  const generateTerraformFiles = async () => {
+  const generateTerraformFiles = () => {
+    // Use the combined format for main.tf (your preferred format)
+    const mainTf = generateTerraformCode()
     
-    const mainTf = await generateTerraformCode()
-    
-    // Generate separate files using TerraformGenerator
-    let variablesTf: string = ""
-    let outputsTf: string = ""
-    let providersTf: string = ""
+    // For the other files, we'll keep them minimal since everything is in main.tf
+    let variablesTf = "# Variables are defined in main.tf"
+    let outputsTf = "# Outputs are defined in main.tf"
+    let providersTf = "# Provider configuration is defined in main.tf"
+
+    setTerraformFiles({
+      "main.tf": mainTf,
+      "variables.tf": variablesTf,
+      "outputs.tf": outputsTf,
+      "providers.tf": providersTf
+    })
     
     if (nodes.length > 0) {
       try {
         const terraformGenerator = new TerraformGenerator(provider, nodes, edges)
-        const output = await terraformGenerator.generate()
+        const output = terraformGenerator.generate()
         
         // Generate variables.tf
         if (Object.keys(output.variables).length > 0) {
@@ -982,29 +1102,23 @@ provider "aws" {
   }, [deploymentStatus])
 
   // Update all Terraform files when nodes change
-  const updateAllTerraformFiles = async () => {
-    await generateTerraformFiles()
+  const updateAllTerraformFiles = () => {
+    generateTerraformFiles()
   }
 
   // Update main.tf when nodes change (kept for backward compatibility)
-  const updateMainTf = async () => {
-    await updateAllTerraformFiles()
+  const updateMainTf = () => {
+    updateAllTerraformFiles()
   }
 
   // Initialize files on component mount
   useEffect(() => {
-    const initFiles = async () => {
-      await generateTerraformFiles()
-    }
-    initFiles()
+    generateTerraformFiles()
   }, [])
 
   // Update main.tf when nodes or edges change
   useEffect(() => {
-    const updateFiles = async () => {
-      await updateMainTf()
-    }
-    updateFiles()
+    updateMainTf()
   }, [nodes, edges])
 
   // Handle resize functionality
@@ -1076,7 +1190,7 @@ provider "aws" {
   }, [deleteSelectedElements, undo, redo])
 
   return (
-    <div className="h-screen bg-white flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       {/* Top Header with Back Button and Toolbar */}
       <div className="flex flex-col">
         <div className="h-12 border-b border-gray-200 bg-white flex items-center px-4">
@@ -1089,6 +1203,126 @@ provider "aws" {
             <ArrowLeft className="w-4 h-4 mr-2" />
             Back
           </Button>
+          
+          {/* Settings Button */}
+          <Dialog open={isSettingsOpen} onOpenChange={setIsSettingsOpen}>
+            <DialogTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
+                <Settings className="w-4 h-4 mr-2" />
+                Settings
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>Provider Settings</DialogTitle>
+                <DialogDescription>
+                  Configure your AWS and Supabase credentials for deployment.
+                </DialogDescription>
+              </DialogHeader>
+              
+              <div className="space-y-6">
+                {/* AWS Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-orange-500 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">A</span>
+                    </div>
+                    <h3 className="text-lg font-semibold">AWS Configuration</h3>
+                  </div>
+                  
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <Label htmlFor="aws-access-key">Access Key ID</Label>
+                      <Input
+                        id="aws-access-key"
+                        type="text"
+                        value={awsAccessKey}
+                        onChange={(e) => setAwsAccessKey(e.target.value)}
+                        placeholder="AKIA..."
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor="aws-region">Region</Label>
+                      <Select value={awsRegion} onValueChange={setAwsRegion}>
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="us-east-1">US East (N. Virginia)</SelectItem>
+                          <SelectItem value="us-west-2">US West (Oregon)</SelectItem>
+                          <SelectItem value="eu-west-1">Europe (Ireland)</SelectItem>
+                          <SelectItem value="ap-southeast-1">Asia Pacific (Singapore)</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="aws-secret-key">Secret Access Key</Label>
+                    <Input
+                      id="aws-secret-key"
+                      type="password"
+                      value={awsSecretKey}
+                      onChange={(e) => setAwsSecretKey(e.target.value)}
+                      placeholder="Enter your secret key"
+                    />
+                  </div>
+                </div>
+                
+                {/* Supabase Section */}
+                <div className="space-y-4">
+                  <div className="flex items-center gap-2">
+                    <div className="w-6 h-6 bg-green-500 rounded flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">S</span>
+                    </div>
+                    <h3 className="text-lg font-semibold">Supabase Configuration</h3>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="supabase-url">Project URL</Label>
+                    <Input
+                      id="supabase-url"
+                      type="url"
+                      value={supabaseUrl}
+                      onChange={(e) => setSupabaseUrl(e.target.value)}
+                      placeholder="https://your-project.supabase.co"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="supabase-key">API Key</Label>
+                    <Input
+                      id="supabase-key"
+                      type="password"
+                      value={supabaseKey}
+                      onChange={(e) => setSupabaseKey(e.target.value)}
+                      placeholder="Enter your API key"
+                    />
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <Label htmlFor="supabase-access-token">Access Token</Label>
+                    <Input
+                      id="supabase-access-token"
+                      type="password"
+                      value={supabaseAccessToken}
+                      onChange={(e) => setSupabaseAccessToken(e.target.value)}
+                      placeholder="Enter your Supabase access token"
+                    />
+                  </div>
+                </div>
+              </div>
+              
+              <div className="flex justify-end gap-2 pt-4">
+                <Button variant="outline" onClick={() => setIsSettingsOpen(false)}>
+                  Cancel
+                </Button>
+                <Button onClick={handleSaveCredentials}>
+                  Save Credentials
+                </Button>
+              </div>
+            </DialogContent>
+          </Dialog>
         </div>
         <Toolbar
           onSave={saveCurrentState}
@@ -1194,7 +1428,7 @@ provider "aws" {
         {/* Central Canvas */}
         <main className="flex-1 flex flex-col">
           {/* Canvas Area */}
-          <div className="flex-1 relative bg-gray-50">
+          <div className="flex-1 relative bg-background">
             <div className="h-full">
               <ReactFlowProvider>
                 <ReactFlow
@@ -1284,11 +1518,11 @@ provider "aws" {
               style={{ flex: "3 1 0", minHeight: "300px" }}
             >
               {/* Code Editor Header */}
-              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50 shrink-0">
+              <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-card shrink-0">
                 <div className="flex items-center gap-2">
                   <Code className="w-4 h-4" />
                   <Select value={activeFile} onValueChange={handleFileChange}>
-                    <SelectTrigger className="w-44 bg-gray-100 border-gray-300 text-gray-900">
+                    <SelectTrigger className="w-44 bg-background border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent className="bg-gray-100 border-gray-300">
@@ -1356,7 +1590,7 @@ provider "aws" {
                       <div className="mb-2 relative">
                         <div className="absolute top-0 right-0">
                           <button
-                            className="text-xs text-gray-500 hover:text-gray-700 p-1"
+                            className="text-xs text-muted-foreground hover:text-foreground p-1"
                             onClick={() => setIsProgressVisible(false)}
                             aria-label="Close progress"
                           >
@@ -1449,7 +1683,7 @@ provider "aws" {
                     terraformFiles[activeFile as keyof typeof terraformFiles]
                   }
                   onChange={(e) => handleFileContentChange(e.target.value)}
-                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none min-h-0"
+                  className="terraform-editor flex-1 bg-card text-sm text-card-foreground resize-none border-none outline-none min-h-0"
                   placeholder="Start typing your Terraform configuration..."
                   spellCheck={false}
                 />
@@ -1479,8 +1713,8 @@ provider "aws" {
       {/* Floating Chat Widget */}
       <div className="fixed bottom-6 right-6 z-50">
         {isChatOpen ? (
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-[520px] h-[500px] flex flex-col">
-            <div className="flex items-center justify-between p-3 border-b border-gray-200">
+          <div className="bg-card rounded-lg shadow-lg border border-border w-[520px] h-[500px] flex flex-col">
+            <div className="flex items-center justify-between p-3 border-b border-border">
               <div className="flex items-center gap-2">
                 <span className="font-medium text-gray-900">
                   AI Assistant - Rex
@@ -1490,9 +1724,9 @@ provider "aws" {
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsChatOpen(false)}
-                className="h-6 w-6 p-0 hover:bg-gray-100"
+                className="h-6 w-6 p-0 hover:bg-accent"
               >
-                <span className="text-gray-500 text-lg leading-none">×</span>
+                <span className="text-muted-foreground text-lg leading-none">×</span>
               </Button>
             </div>
             <div className="flex-1 overflow-hidden">
@@ -1502,9 +1736,9 @@ provider "aws" {
         ) : (
           <Button
             onClick={() => setIsChatOpen(true)}
-            className="w-14 h-14 rounded-full bg-orange-500 hover:bg-orange-600 shadow-lg flex items-center justify-center"
+            className="w-14 h-14 rounded-full bg-primary hover:bg-primary/90 shadow-lg flex items-center justify-center"
           >
-            <Brain className="w-6 h-6 text-white" />
+            <Brain className="w-6 h-6 text-primary-foreground" />
           </Button>
         )}
       </div>

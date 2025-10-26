@@ -120,11 +120,11 @@ export function Toolbar({
               </Button>
             )}
             <Button 
-              className="bg-blue-600 hover:bg-blue-700"
+              className="bg-green-600 hover:bg-green-700"
               onClick={onPlanOrApply}
             >
               <Rocket className="w-4 h-4 mr-2" />
-              Plan
+              Deploy
             </Button>
           </>
         )}

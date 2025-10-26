@@ -26,8 +26,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
   // Early return if data is not properly structured
   if (!data) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-2 min-w-[100px]">
-        <div className="text-center text-gray-500 text-xs">
+      <div className="bg-card border border-border rounded-lg shadow-sm p-2 min-w-[100px]">
+        <div className="text-center text-muted-foreground text-xs">
           Invalid
         </div>
       </div>
@@ -92,9 +92,9 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
   }
 
   return (
-    <div className={`relative ${selected ? "ring-2 ring-blue-500 ring-offset-2" : ""}`}>
+    <div className={`relative ${selected ? "ring-2 ring-primary ring-offset-2 ring-offset-background" : ""}`}>
       {/* Delete button - only visible when selected */}
-      {selected && nodeData.onDelete && (
+      {selected && (
         <Button
           size="icon"
           variant="destructive"
@@ -111,8 +111,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
       {/* Each side has BOTH source and target handles with SAME ID */}
       {(() => {
         const handleClass =
-          "w-4 h-4 !bg-blue-500 hover:!bg-blue-600 dark:!bg-blue-400 dark:hover:!bg-blue-500 " +
-          "!border-2 !border-white transition-all duration-200 " +
+          "w-4 h-4 !bg-primary hover:!bg-primary/80 " +
+          "!border-2 !border-background transition-all duration-200 " +
           "pointer-events-auto rounded-full cursor-crosshair";
 
         return (
@@ -221,20 +221,24 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
       })()}
 
       <div 
-        className="cursor-pointer"
+        className="cursor-pointer flex flex-col items-center"
         onDoubleClick={handleDoubleClick}
       >
-        {/* Just the image */}
+        {/* Node Icon */}
         {isImageIcon(nodeData.icon) ? (
           <img src={nodeData.icon} alt={nodeData.name} className="w-18 h-18" />
         ) : (
           <div className={`w-10 h-10 ${getNodeColor(nodeData.id, nodeData.provider)} flex items-center justify-center shadow-md`}>
-            <span className="text-gray-900 text-base font-bold">
+            <span className="text-white text-base font-bold">
               {getNodeIcon(nodeData.id, nodeData.provider)}
             </span>
           </div>
         )}
-
+        
+        {/* Node Name */}
+        <div className="mt-1 text-xs text-center text-card-foreground bg-card/80 backdrop-blur-sm px-2 py-1 rounded border border-border/50 max-w-20 truncate">
+          {nodeData.name}
+        </div>
       </div>
 
       {/* Delete Node Confirmation Dialog */}
@@ -250,7 +254,12 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
             <AlertDialogCancel>Cancel</AlertDialogCancel>
             <AlertDialogAction
               onClick={() => {
-                nodeData.onDelete?.();
+                console.log('Delete button clicked, onDelete function:', nodeData.onDelete);
+                if (nodeData.onDelete) {
+                  nodeData.onDelete();
+                } else {
+                  console.log('No onDelete function available');
+                }
                 setShowDeleteDialog(false);
               }}
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
