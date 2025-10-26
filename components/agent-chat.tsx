@@ -511,7 +511,7 @@ export function AgentChat() {
             "rounded-lg px-3 py-2",
             message.role === 'user'
               ? 'bg-blue-500 text-white'
-              : 'bg-gray-100 dark:bg-gray-800 text-gray-900 dark:text-gray-100'
+              : 'bg-muted text-foreground'
           )}>
             {message.type === 'dialogue_options' && message.options ? (
               <div className="space-y-1">
@@ -635,7 +635,7 @@ export function AgentChat() {
   }
 
   return (
-    <div className="flex flex-col h-full bg-white">
+    <div className="flex flex-col h-full bg-card">
       {/* Header */}
 
       {/* Chat content */}
@@ -652,7 +652,7 @@ export function AgentChat() {
                       <div className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center flex-shrink-0">
                         <Bot className="w-4 h-4 text-white" />
                       </div>
-                      <div className="bg-gray-100 dark:bg-gray-800 rounded-lg px-4 py-2">
+                      <div className="bg-muted rounded-lg px-4 py-2">
                         <div className="flex gap-1">
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" />
                           <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }} />
@@ -667,7 +667,7 @@ export function AgentChat() {
           </div>
 
           {/* Input area */}
-          <div className="flex-shrink-0 p-2 border-t bg-white">
+          <div className="flex-shrink-0 p-2 border-t bg-card">
             {/* Quick Questions */}
             {quickQuestions.length > 0 && (
               <div className="mb-2 flex gap-2">

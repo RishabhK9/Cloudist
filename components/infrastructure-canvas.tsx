@@ -876,11 +876,11 @@ provider "aws" {
   }, [deleteSelectedElements, undo, redo])
 
   return (
-    <div className="h-screen bg-white flex flex-col">
+    <div className="h-screen bg-background flex flex-col">
       {/* Top Header */}
-      <header className="h-14 border-b border-gray-200 bg-white flex items-center px-4">
+      <header className="h-14 border-b border-border bg-card flex items-center px-4">
         <div className="flex items-center gap-4">
-          <Button variant="ghost" size="sm" onClick={onBack} className="text-gray-600 hover:text-gray-900">
+          <Button variant="ghost" size="sm" onClick={onBack} className="text-muted-foreground hover:text-foreground">
             <ArrowLeft className="w-4 h- mr-2" />
             Back
           </Button>
@@ -899,7 +899,7 @@ provider "aws" {
               size="sm" 
               onClick={saveCurrentState}
               disabled={!hasUnsavedChanges()}
-              className="text-gray-600 hover:text-gray-900"
+              className="text-muted-foreground hover:text-foreground"
             >
               <Save className="w-4 h-4 mr-2" />
               {isSaving ? 'Saving...' : 'Save'}
@@ -915,14 +915,14 @@ provider "aws" {
 
       <div className="flex-1 flex">
         {/* Left Sidebar */}
-        <aside className="w-80 border-r border-gray-200 bg-white overflow-y-auto">
+        <aside className="w-80 border-r border-border bg-card overflow-y-auto">
           <div className="p-4 space-y-4">
             
             {/* Cloud Services */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
-                  <span className="font-medium text-gray-900">Cloud Services</span>
+                  <span className="font-medium text-foreground">Cloud Services</span>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-2">
@@ -939,11 +939,11 @@ provider "aws" {
                   services.slice(0, 12).map((service) => (
                     <div
                       key={service.id}
-                      className="flex flex-col items-center p-2 hover:bg-purple-50 rounded cursor-grab active:cursor-grabbing border border-gray-200 hover:border-purple-200 transition-colors"
+                      className="flex flex-col items-center p-2 hover:bg-primary/10 rounded cursor-grab active:cursor-grabbing border border-border hover:border-primary/30 transition-colors"
                       draggable
                       onDragStart={(event) => onDragStart(event, service)}
                     >
-                      <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center shadow-sm mb-1">
+                      <div className="w-8 h-8 bg-card rounded-lg flex items-center justify-center shadow-sm mb-1">
                         {service.icon.startsWith('/') ? (
                           <img src={service.icon} alt={service.name} className="w-6 h-6" />
                         ) : (
@@ -958,16 +958,16 @@ provider "aws" {
             </div>
 
             {/* Node and edge summary */}
-            <div className="mt-auto pt-4 border-t border-gray-200">
-              <div className="text-xs text-gray-500 mb-2">
+            <div className="mt-auto pt-4 border-t border-border">
+              <div className="text-xs text-muted-foreground mb-2">
                 Number of nodes: {nodes.length}
               </div>
-              <div className="text-xs text-gray-500 mb-2">
+              <div className="text-xs text-muted-foreground mb-2">
                 Number of edges: {edges.length}
               </div>
               {(selectedNodes.length > 0 || selectedEdges.length > 0) && (
                 <div className="mb-2">
-                  <div className="text-xs text-red-600 mb-1">
+                  <div className="text-xs text-destructive mb-1">
                     Selected: {selectedNodes.length} node{selectedNodes.length !== 1 ? 's' : ''}, {selectedEdges.length} edge{selectedEdges.length !== 1 ? 's' : ''}
                   </div>
                   <Button 
@@ -988,7 +988,7 @@ provider "aws" {
         <main className="flex-1 flex flex-col">
 
           {/* Canvas Area */}
-          <div className="flex-1 relative bg-gray-50">
+          <div className="flex-1 relative bg-background">
             <div className="h-full">
               <ReactFlowProvider>
                 <ReactFlow
@@ -1006,7 +1006,8 @@ provider "aws" {
                   onSelectionChange={handleSelectionChange}
                   nodeTypes={createNodeTypes(handleNodeDoubleClick)}
                   // edgeTypes={createEdgeTypes()}
-                  className="bg-gray-50"
+                  className="bg-background"
+                  proOptions={{ hideAttribution: true }}
                   connectionLineStyle={{ stroke: "#666", strokeWidth: 2 }}
                   defaultEdgeOptions={defaultEdgeOptions}
                   // Increase the connection radius so users don't have to be pixel-perfect when
@@ -1048,7 +1049,7 @@ provider "aws" {
                   whileHover={{ scale: 1.05 }}
                   whileTap={{ scale: 0.95 }}
                 >
-                  <button className="px-6 py-3 flex items-center gap-2 text-sm font-medium text-gray-800 hover:text-gray-900">
+                  <button className="px-6 py-3 flex items-center gap-2 text-sm font-medium text-foreground hover:text-primary">
                     <Brain className="w-5 h-5" />
                     AI Review
                   </button>
@@ -1070,32 +1071,32 @@ provider "aws" {
             onSave={handleSaveConfig}
           />
         ) : (
-          <aside className="w-80 border-l border-gray-200 bg-gray-50 text-gray-900">
+          <aside className="w-80 border-l border-border bg-card text-foreground">
             <div className="h-full flex flex-col">
               {/* Code Editor Header */}
-              <div className="h-12 border-b border-gray-200 flex items-center justify-between px-4 bg-gray-50">
+              <div className="h-12 border-b border-border flex items-center justify-between px-4 bg-card">
                 <div className="flex items-center gap-2">
                   <Code className="w-4 h-4" />
                   <Select value={activeFile} onValueChange={handleFileChange}>
-                    <SelectTrigger className="w-44 bg-gray-100 border-gray-300 text-gray-900">
+                    <SelectTrigger className="w-44 bg-input border-border text-foreground">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="bg-gray-100 border-gray-300">
-                      <SelectItem value="main.tf" className="text-gray-900 hover:bg-gray-200">main.tf</SelectItem>
-                      <SelectItem value="variables.tf" className="text-gray-900 hover:bg-gray-200">variables.tf</SelectItem>
-                      <SelectItem value="outputs.tf" className="text-gray-900 hover:bg-gray-200">outputs.tf</SelectItem>
-                      <SelectItem value="providers.tf" className="text-gray-900 hover:bg-gray-200">providers.tf</SelectItem>
+                    <SelectContent className="bg-popover border-border">
+                      <SelectItem value="main.tf" className="text-foreground hover:bg-accent">main.tf</SelectItem>
+                      <SelectItem value="variables.tf" className="text-foreground hover:bg-accent">variables.tf</SelectItem>
+                      <SelectItem value="outputs.tf" className="text-foreground hover:bg-accent">outputs.tf</SelectItem>
+                      <SelectItem value="providers.tf" className="text-foreground hover:bg-accent">providers.tf</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Button onClick={() => handleDownloadTerraformCode(activeFile)} variant="ghost" size="sm" className="text-gray-600 hover:text-gray-900">
+                  <Button onClick={() => handleDownloadTerraformCode(activeFile)} variant="ghost" size="sm" className="text-muted-foreground hover:text-foreground">
                     <Download className="w-4 h-4" />
                   </Button>
                   <Button 
                     variant="ghost" 
                     size="sm" 
-                    className="text-gray-600 hover:text-gray-900"
+                    className="text-muted-foreground hover:text-foreground"
                     onClick={handleDeploy}
                     disabled={isDeploying}
                   >
@@ -1105,7 +1106,7 @@ provider "aws" {
               </div>
 
               {/* Code Content */}
-              <div className="flex-1 overflow-auto p-4 bg-gray-50 flex flex-col">
+              <div className="flex-1 overflow-auto p-4 bg-background flex flex-col">
                 {/* Deployment Status */}
                 {(isDeploying || deploymentStatus || deploymentError || fakeProgress > 0) && (
                   <div className="mb-4">
@@ -1128,18 +1129,18 @@ provider "aws" {
                             style={{ width: `${Math.min(100, Math.max(0, Math.round(fakeProgress)))}%` }}
                           />
                         </div>
-                        <div className="text-xs text-gray-500 mt-1">{Math.round(fakeProgress)}%</div>
+                        <div className="text-xs text-muted-foreground mt-1">{Math.round(fakeProgress)}%</div>
                       </div>
                     )}
 
-                    <div className="p-3 bg-white rounded-lg border">
+                    <div className="p-3 bg-card rounded-lg border">
                     {isDeploying && deploymentStatus && (
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
-                          <span className="text-sm font-medium text-gray-900">
+                          <span className="text-sm font-medium text-foreground">
                             {deploymentStatus.message}
                           </span>
-                          <span className="text-xs text-gray-500">
+                          <span className="text-xs text-muted-foreground">
                             {deploymentStatus.progress}%
                           </span>
                         </div>
@@ -1150,7 +1151,7 @@ provider "aws" {
                           ></div>
                         </div>
                         {deploymentStatus.logs.length > 0 && (
-                          <div className="text-xs text-gray-600 bg-gray-50 p-2 rounded max-h-20 overflow-y-auto">
+                          <div className="text-xs text-muted-foreground bg-muted p-2 rounded max-h-20 overflow-y-auto">
                             {deploymentStatus.logs.slice(-3).map((log, index) => (
                               <div key={index} className="mb-1">{log}</div>
                             ))}
@@ -1186,7 +1187,7 @@ provider "aws" {
                 <textarea
                   value={terraformFiles[activeFile as keyof typeof terraformFiles]}
                   onChange={(e) => handleFileContentChange(e.target.value)}
-                  className="terraform-editor flex-1 bg-gray-50 text-sm text-gray-900 resize-none border-none outline-none"
+                  className="terraform-editor flex-1 bg-background text-sm text-foreground resize-none border-none outline-none"
                   placeholder="Start typing your Terraform configuration..."
                   spellCheck={false}
                 />
@@ -1209,18 +1210,18 @@ provider "aws" {
       {/* Floating Chat Widget */}
       <div className="fixed bottom-6 right-6 z-50">
         {isChatOpen ? (
-          <div className="bg-white rounded-lg shadow-lg border border-gray-200 w-[520px] h-[500px] flex flex-col">
-            <div className="flex items-center justify-between p-3 border-b border-gray-200">
+          <div className="bg-card rounded-lg shadow-lg border border-border w-[520px] h-[500px] flex flex-col">
+            <div className="flex items-center justify-between p-3 border-b border-border">
               <div className="flex items-center gap-2">
-                <span className="font-medium text-gray-900">AI Assistant - Rex</span>
+                <span className="font-medium text-foreground">AI Assistant - Rex</span>
               </div>
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => setIsChatOpen(false)}
-                className="h-6 w-6 p-0 hover:bg-gray-100"
+                className="h-6 w-6 p-0 hover:bg-accent"
               >
-                <span className="text-gray-500 text-lg leading-none">×</span>
+                <span className="text-muted-foreground text-lg leading-none">×</span>
               </Button>
             </div>
             <div className="flex-1 overflow-hidden">

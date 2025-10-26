@@ -17,8 +17,8 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
   // Early return if data is not properly structured
   if (!data) {
     return (
-      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-2 min-w-[100px]">
-        <div className="text-center text-gray-500 text-xs">
+      <div className="bg-card border border-border rounded-lg shadow-sm p-2 min-w-[100px]">
+        <div className="text-center text-muted-foreground text-xs">
           Invalid
         </div>
       </div>
@@ -87,7 +87,7 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
       case 'azure':
         return 'bg-cyan-500'
       default:
-        return 'bg-gray-500'
+        return 'bg-muted-foreground'
     }
   }
 
@@ -138,7 +138,7 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
           <img src={nodeData.icon} alt={nodeData.name} className="w-18 h-18" />
         ) : (
           <div className={`w-10 h-10 ${getNodeColor(nodeData.id, nodeData.provider)} flex items-center justify-center shadow-md`}>
-            <span className="text-gray-900 text-base font-bold">
+            <span className="text-foreground text-base font-bold">
               {getNodeIcon(nodeData.id, nodeData.provider)}
             </span>
           </div>

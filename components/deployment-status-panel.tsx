@@ -78,11 +78,11 @@ export function DeploymentStatusPanel({ isOpen, onClose }: DeploymentStatusPanel
       case 'pending':
         return 'bg-yellow-100 text-yellow-800'
       case 'cancelled':
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-muted text-foreground'
       case 'destroying':
         return 'bg-orange-100 text-orange-800'
       default:
-        return 'bg-gray-100 text-gray-800'
+        return 'bg-muted text-foreground'
     }
   }
 
@@ -129,12 +129,12 @@ export function DeploymentStatusPanel({ isOpen, onClose }: DeploymentStatusPanel
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50">
-      <div className="bg-white rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
+      <div className="bg-card rounded-lg shadow-xl w-full max-w-4xl h-[80vh] flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Deployment History</h2>
-            <p className="text-sm text-gray-600">View and manage your infrastructure deployments</p>
+            <h2 className="text-xl font-semibold text-foreground">Deployment History</h2>
+            <p className="text-sm text-muted-foreground">View and manage your infrastructure deployments</p>
           </div>
           <div className="flex items-center gap-2">
             <Button
@@ -158,24 +158,24 @@ export function DeploymentStatusPanel({ isOpen, onClose }: DeploymentStatusPanel
             <div className="flex items-center justify-center h-full">
               <div className="text-center">
                 <Play className="w-12 h-12 text-gray-400 mx-auto mb-4" />
-                <h3 className="text-lg font-medium text-gray-900 mb-2">No deployments yet</h3>
-                <p className="text-gray-600">Deploy your first infrastructure to see it here</p>
+                <h3 className="text-lg font-medium text-foreground mb-2">No deployments yet</h3>
+                <p className="text-muted-foreground">Deploy your first infrastructure to see it here</p>
               </div>
             </div>
           ) : (
             <ScrollArea className="h-full">
               <div className="p-6 space-y-4">
                 {deployments.map((deployment) => (
-                  <Card key={deployment.id} className="border border-gray-200">
+                  <Card key={deployment.id} className="border border-border">
                     <CardHeader className="pb-3">
                       <div className="flex items-center justify-between">
                         <div className="flex items-center gap-3">
                           {getStatusIcon(deployment.status)}
                           <div>
-                            <CardTitle className="text-sm font-medium text-gray-900">
+                            <CardTitle className="text-sm font-medium text-foreground">
                               Deployment {deployment.id}
                             </CardTitle>
-                            <CardDescription className="text-xs text-gray-600">
+                            <CardDescription className="text-xs text-muted-foreground">
                               {formatDate(deployment.createdAt)} • {formatDuration(deployment.createdAt, deployment.updatedAt)}
                             </CardDescription>
                           </div>
@@ -235,12 +235,12 @@ export function DeploymentStatusPanel({ isOpen, onClose }: DeploymentStatusPanel
                         {/* Outputs */}
                         {deployment.outputs && Object.keys(deployment.outputs).length > 0 && (
                           <div className="text-sm">
-                            <div className="font-medium text-gray-900 mb-1">Outputs:</div>
-                            <div className="bg-gray-50 p-2 rounded text-xs">
+                            <div className="font-medium text-foreground mb-1">Outputs:</div>
+                            <div className="bg-muted p-2 rounded text-xs">
                               {Object.entries(deployment.outputs).map(([key, value]) => (
                                 <div key={key} className="flex justify-between">
-                                  <span className="font-medium text-gray-700">{key}:</span>
-                                  <span className="text-gray-600">{String(value)}</span>
+                                  <span className="font-medium text-foreground">{key}:</span>
+                                  <span className="text-muted-foreground">{String(value)}</span>
                                 </div>
                               ))}
                             </div>
@@ -250,10 +250,10 @@ export function DeploymentStatusPanel({ isOpen, onClose }: DeploymentStatusPanel
                         {/* Recent logs */}
                         {deployment.logs.length > 0 && (
                           <div className="text-sm">
-                            <div className="font-medium text-gray-900 mb-1">Recent Logs:</div>
-                            <div className="bg-gray-50 p-2 rounded text-xs max-h-20 overflow-y-auto">
+                            <div className="font-medium text-foreground mb-1">Recent Logs:</div>
+                            <div className="bg-muted p-2 rounded text-xs max-h-20 overflow-y-auto">
                               {deployment.logs.slice(-5).map((log, index) => (
-                                <div key={index} className="text-gray-600">{log}</div>
+                                <div key={index} className="text-muted-foreground">{log}</div>
                               ))}
                             </div>
                           </div>

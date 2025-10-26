@@ -112,7 +112,7 @@ export function ConfigurationPanel({
                 checked={value === true || value === "true"}
                 onCheckedChange={(checked: boolean) => updateConfig(key, checked.toString())}
               />
-              <Label htmlFor={key} className="text-sm text-gray-900">
+              <Label htmlFor={key} className="text-sm text-foreground">
                 {fieldConfig.label}
               </Label>
             </div>
@@ -158,18 +158,18 @@ export function ConfigurationPanel({
     return (
       <div key={key} className="space-y-2">
         <div className="flex items-center space-x-1">
-          <Label className="text-sm font-medium text-gray-900">
+          <Label className="text-sm font-medium text-foreground">
             {fieldConfig.label}
-            {isRequired && <span className="text-red-500 ml-1">*</span>}
+            {isRequired && <span className="text-destructive ml-1">*</span>}
           </Label>
           {fieldConfig.description && (
             <div title={fieldConfig.description}>
-              <Info className="w-4 h-4 text-gray-400" />
+              <Info className="w-4 h-4 text-muted-foreground" />
             </div>
           )}
         </div>
         {fieldConfig.description && (
-          <p className="text-xs text-gray-500">{fieldConfig.description}</p>
+          <p className="text-xs text-muted-foreground">{fieldConfig.description}</p>
         )}
         {renderField()}
       </div>
@@ -198,13 +198,13 @@ export function ConfigurationPanel({
   }
 
   return (
-    <div className="w-80 bg-white border-l border-gray-200 h-full flex flex-col">
+    <div className="w-80 bg-card border-l border-border h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b border-gray-200">
+      <div className="p-4 border-b border-border">
         <div className="flex items-center justify-between mb-4">
           {/* Left: icon + stacked text */}
           <div className="flex items-center gap-3 min-w-0">
-            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm bg-white border border-gray-200 flex-shrink-0">
+            <div className="w-8 h-8 rounded-lg flex items-center justify-center shadow-sm bg-card border border-border flex-shrink-0">
               <img
                 src={getNodeIconPath(nodeData.id, nodeData.provider)}
                 alt={`${nodeData.id} icon`}
@@ -212,14 +212,14 @@ export function ConfigurationPanel({
               />
             </div>
             <div className="flex-1 min-w-0">
-              <h3 className="font-semibold text-sm text-gray-900 truncate">{nodeData.name}</h3>
-              <p className="text-xs text-gray-500 truncate">{nodeData.terraformType}</p>
+              <h3 className="font-semibold text-sm text-foreground truncate">{nodeData.name}</h3>
+              <p className="text-xs text-muted-foreground truncate">{nodeData.terraformType}</p>
             </div>
           </div>
 
           {/* Right: close button */}
           <div className="flex items-center gap-2">
-            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-gray-100 text-gray-600 hover:text-gray-900" onClick={onClose}>
+            <Button variant="ghost" size="sm" className="h-6 w-6 p-0 hover:bg-accent text-muted-foreground hover:text-foreground" onClick={onClose}>
               <X className="w-3 h-3" />
             </Button>
           </div>
@@ -231,7 +231,7 @@ export function ConfigurationPanel({
             placeholder="Search attributes..."
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full h-8 text-sm border border-gray-300 rounded-md"
+            className="w-full h-8 text-sm border border-border rounded-md bg-input text-foreground"
           />
         </div>
       </div>
@@ -242,32 +242,32 @@ export function ConfigurationPanel({
           {/* Required Parameters Section */}
           <div className="space-y-3">
             <div className="flex items-center justify-between">
-              <h4 className="font-medium text-sm text-gray-900">Required parameters</h4>
-              <div className="w-4 h-4 bg-gray-100 rounded flex items-center justify-center">
-                <div className="w-2 h-2 bg-gray-400 rounded-full"></div>
+              <h4 className="font-medium text-sm text-foreground">Required parameters</h4>
+              <div className="w-4 h-4 bg-muted rounded flex items-center justify-center">
+                <div className="w-2 h-2 bg-muted-foreground rounded-full"></div>
               </div>
             </div>
             
             {/* Resource Name */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-900">Resource name</Label>
+              <Label className="text-sm font-medium text-foreground">Resource name</Label>
               <Input
                 value={nodeData.name}
-                className="h-8 bg-gray-50"
+                className="h-8 bg-input"
                 readOnly
               />
-              <p className="text-xs text-gray-500">This name is used to create Terraform resource.</p>
+              <p className="text-xs text-muted-foreground">This name is used to create Terraform resource.</p>
             </div>
 
             {/* Region */}
             <div className="space-y-2">
-              <Label className="text-sm font-medium text-gray-900">Region</Label>
+              <Label className="text-sm font-medium text-foreground">Region</Label>
               <Input
                 value="US East (N. Virginia)"
-                className="h-8 bg-gray-50"
+                className="h-8 bg-input"
                 readOnly
               />
-              <p className="text-xs text-gray-500">us-east-1</p>
+              <p className="text-xs text-muted-foreground">us-east-1</p>
             </div>
 
             {/* Dynamic Configuration Fields */}
