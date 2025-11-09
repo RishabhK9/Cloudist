@@ -1,0 +1,61 @@
+{
+  "id": "route53",
+  "name": "Route 53",
+  "icon": "/aws/Arch_AWS_Route 53.svg",
+  "category": "Networking",
+  "description": "Scalable domain name system (DNS) and domain registration service",
+  "terraformType": "aws_route53_zone",
+  "defaultConfig": {
+    "name": "",
+    "vpc_id": "",
+    "private_zone": false,
+    "force_destroy": false
+  },
+  "configSchema": {
+    "name": {
+      "type": "string",
+      "label": "Domain Name",
+      "description": "The domain name for the hosted zone",
+      "required": true,
+      "validation": {
+        "pattern": "^([a-zA-Z0-9]([a-zA-Z0-9\\-]{0,61}[a-zA-Z0-9])?\\.)+[a-zA-Z]{2,}$"
+      }
+    },
+    "private_zone": {
+      "type": "boolean",
+      "label": "Private Zone",
+      "description": "Whether this is a private hosted zone",
+      "default": false
+    },
+    "vpc_id": {
+      "type": "string",
+      "label": "VPC ID",
+      "description": "VPC ID to associate with private hosted zone",
+      "required": false
+    },
+    "force_destroy": {
+      "type": "boolean",
+      "label": "Force Destroy",
+      "description": "Allow deletion of the hosted zone even if it contains records",
+      "default": false
+    },
+    "comment": {
+      "type": "string",
+      "label": "Comment",
+      "description": "A comment for the hosted zone",
+      "required": false
+    },
+    "delegation_set_id": {
+      "type": "string",
+      "label": "Delegation Set ID",
+      "description": "The ID of the reusable delegation set",
+      "required": false
+    },
+    "tags": {
+      "type": "string",
+      "label": "Tags",
+      "description": "JSON string of tags to apply",
+      "required": false
+    }
+  }
+}

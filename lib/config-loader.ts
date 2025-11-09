@@ -28,6 +28,7 @@ const AVAILABLE_PROVIDERS = ['aws', 'azure', 'gcp', 'supabase', 'stripe'] as con
 
 const PROVIDER_SERVICES: Record<string, string[]> = {
   aws: [
+    'amplify',
     'api_gateway',
     'cloudfront',
     'cloudwatch', 
@@ -39,13 +40,15 @@ const PROVIDER_SERVICES: Record<string, string[]> = {
     'internet_gateway',
     'lambda',
     'rds',
+    'route53',
     's3',
     'secrets_manager',
     'security_group',
     'sqs',
     'step_functions',
     'subnet',
-    'vpc'
+    'vpc',
+    'waf'
   ],
   azure: ['vm'],
   gcp: ['compute'],

@@ -1,0 +1,87 @@
+{
+  "id": "amplify",
+  "name": "Amplify",
+  "icon": "/aws/Arch_AWS_Amplify.svg",
+  "category": "Frontend & Mobile",
+  "description": "Build and deploy full-stack web and mobile applications",
+  "terraformType": "aws_amplify_app",
+  "defaultConfig": {
+    "name": "",
+    "repository": "",
+    "platform": "WEB",
+    "enable_auto_branch_creation": false,
+    "enable_branch_auto_build": true
+  },
+  "configSchema": {
+    "name": {
+      "type": "string",
+      "label": "App Name",
+      "description": "The name of the Amplify app",
+      "required": true
+    },
+    "repository": {
+      "type": "string",
+      "label": "Repository URL",
+      "description": "The repository URL (e.g., GitHub, GitLab, Bitbucket)",
+      "required": true
+    },
+    "platform": {
+      "type": "select",
+      "label": "Platform",
+      "description": "The platform for the Amplify app",
+      "options": ["WEB", "WEB_COMPUTE", "WEB_DYNAMIC"],
+      "default": "WEB",
+      "required": true
+    },
+    "framework": {
+      "type": "select",
+      "label": "Framework",
+      "description": "The frontend framework",
+      "options": ["React", "Vue", "Angular", "Next.js", "Gatsby", "Hugo", "Jekyll", "Nuxt", "Svelte"],
+      "default": "React",
+      "required": false
+    },
+    "enable_auto_branch_creation": {
+      "type": "boolean",
+      "label": "Enable Auto Branch Creation",
+      "description": "Automatically create branches",
+      "default": false
+    },
+    "enable_branch_auto_build": {
+      "type": "boolean",
+      "label": "Enable Branch Auto Build",
+      "description": "Automatically build branches on push",
+      "default": true
+    },
+    "enable_basic_auth": {
+      "type": "boolean",
+      "label": "Enable Basic Auth",
+      "description": "Enable basic authentication for the app",
+      "default": false
+    },
+    "build_spec": {
+      "type": "string",
+      "label": "Build Spec",
+      "description": "The build specification (YAML) for the app",
+      "required": false
+    },
+    "custom_rules": {
+      "type": "string",
+      "label": "Custom Rules",
+      "description": "JSON array of custom redirect/rewrite rules",
+      "required": false
+    },
+    "environment_variables": {
+      "type": "string",
+      "label": "Environment Variables",
+      "description": "JSON string of environment variables",
+      "required": false
+    },
+    "tags": {
+      "type": "string",
+      "label": "Tags",
+      "description": "JSON string of tags to apply",
+      "required": false
+    }
+  }
+}

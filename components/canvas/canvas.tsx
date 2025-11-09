@@ -38,7 +38,7 @@ const iconMap: Record<string, string> = {
   ec2: "/aws/Arch_Amazon-EC2_64.svg",
   lambda: "/aws/Arch_AWS-Lambda_64.svg",
   fargate: "/aws/Arch_AWS-Fargate_64.svg",
-  kubernetes: "/aws/Arcg_AWS_Elastic_Kubernetes_Service.svg",
+  kubernetes: "/aws/Arch_AWS_Elastic_Kubernetes_Service.svg",
   container: "/aws/Arch_Amazon-ECS-Anywhere_64.svg",
   
   // Storage
@@ -58,7 +58,9 @@ const iconMap: Record<string, string> = {
   apigateway: "/aws/Arch_Amazon-API-Gateway_64.svg",
   loadbalancer: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   cloudfront: "/aws/Arch_Amazon-CloudWatch_64.svg",
-  
+  amplify: "/aws/Arch_AWS_Amplify.svg",
+  route53: "/aws/Arch_AWS_Route 53.svg",
+
   // Security
   security_group: "/aws/ec2.svg",
   securitygroup: "/aws/ec2.svg",

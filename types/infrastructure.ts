@@ -23,6 +23,8 @@ export type BlockType =
   | "secrets_manager"
   | "cognito"
   | "waf"
+  | "route53"
+  | "amplify"
   | "sqs"
   | "step_functions"
   | "cloudwatch"

@@ -82,7 +82,8 @@ export function AgentChat() {
   const [quickQuestions, setQuickQuestions] = useState<string[]>(getRandomQuestions())
 
   // Clean AI response text - remove unwanted formatting
-  const cleanResponseText = (text: string): string => {
+  const cleanResponseText = (text: string | undefined): string => {
+    if (!text) return "I'm here to help with your cloud infrastructure needs."
     return text
       .replace(/\*+/g, '') // Remove asterisks
       .replace(/#+/g, '') // Remove hash symbols
@@ -118,7 +119,11 @@ export function AgentChat() {
 
       let agentResponse: Message
 
+      console.log('🔍 DEBUG: Response type:', response.type)
+      console.log('🔍 DEBUG: Response content:', response.content)
+
       if (response.type === 'multiple_choice' && response.choices) {
+        console.log('✅ Taking multiple_choice branch')
         agentResponse = {
           id: `assistant_${Date.now()}`,
           role: 'assistant',
@@ -129,6 +134,7 @@ export function AgentChat() {
           onChoice: response.onChoice
         }
       } else if (response.type === 'todolist' && response.items) {
+        console.log('✅ Taking todolist branch')
         agentResponse = {
           id: `assistant_${Date.now()}`,
           role: 'assistant',
@@ -139,6 +145,7 @@ export function AgentChat() {
           createInfrastructure: response.createInfrastructure
         }
       } else {
+        console.log('✅ Taking text branch (default)')
         agentResponse = {
           id: `assistant_${Date.now()}`,
           role: 'assistant',
@@ -148,7 +155,9 @@ export function AgentChat() {
         }
       }
 
+      console.log('🔍 DEBUG: Agent response created:', agentResponse)
       setMessages(prev => [...prev, agentResponse])
+      console.log('🔍 DEBUG: Messages state updated')
 
       // Handle infrastructure creation if present
       if (response.createInfrastructure && Array.isArray(response.createInfrastructure)) {
@@ -330,7 +339,7 @@ export function AgentChat() {
         agentResponse = {
           id: `agent_${Date.now()}`,
           role: 'assistant',
-          content: cleanResponseText(response.content || response.error || "I'm here to help with your cloud infrastructure needs."),
+          content: cleanResponseText(response.content || "I'm here to help with your cloud infrastructure needs."),
           timestamp: Date.now()
         }
       }
