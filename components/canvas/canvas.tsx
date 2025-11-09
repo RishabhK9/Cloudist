@@ -58,7 +58,9 @@ const iconMap: Record<string, string> = {
   apigateway: "/aws/Arch_Amazon-API-Gateway_64.svg",
   loadbalancer: "/aws/Arch_Amazon-EC2-Auto-Scaling_64.svg",
   cloudfront: "/aws/Arch_Amazon-CloudWatch_64.svg",
-  
+  amplify: "/aws/Arch_AWS_Amplify.svg",
+  route53: "/aws/Arch_AWS_Route 53.svg",
+
   // Security
   security_group: "/aws/ec2.svg",
   securitygroup: "/aws/ec2.svg",

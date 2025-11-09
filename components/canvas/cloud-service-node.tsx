@@ -224,17 +224,20 @@ export const CloudServiceNode = memo(({ data, selected, onDoubleClick }: CloudSe
         className="cursor-pointer"
         onDoubleClick={handleDoubleClick}
       >
-        {/* Just the image */}
-        {isImageIcon(nodeData.icon) ? (
-          <img src={nodeData.icon} alt={nodeData.name} className="w-18 h-18" />
-        ) : (
-          <div className={`w-10 h-10 ${getNodeColor(nodeData.id, nodeData.provider)} flex items-center justify-center shadow-md`}>
-            <span className="text-gray-900 text-base font-bold">
-              {getNodeIcon(nodeData.id, nodeData.provider)}
-            </span>
+        <div className="flex flex-col items-center">
+          {isImageIcon(nodeData.icon) ? (
+            <img src={nodeData.icon} alt={nodeData.name} className="w-18 h-18 object-contain" />
+          ) : (
+            <div className={`w-10 h-10 ${getNodeColor(nodeData.id, nodeData.provider)} flex items-center justify-center shadow-md`}>
+              <span className="text-gray-900 text-base font-bold">
+                {getNodeIcon(nodeData.id, nodeData.provider)}
+              </span>
+            </div>
+          )}
+          <div className="mt-2 text-xs font-medium text-center text-white max-w-[120px] px-1 break-words">
+            {nodeData.name}
           </div>
-        )}
-
+        </div>
       </div>
 
       {/* Delete Node Confirmation Dialog */}

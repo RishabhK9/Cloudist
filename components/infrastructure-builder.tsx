@@ -11,6 +11,7 @@ import { Toolbar } from "@/components/toolbar";
 import { ProjectTitleBar } from "@/components/layout/project-title-bar";
 import { CreateNewProjectDialog } from "@/components/dialogs/create-new-project-dialog";
 import { OpenProjectDialog, type Project } from "@/components/dialogs/open-project-dialog";
+import { EditProjectDialog } from "@/components/dialogs/edit-project-dialog";
 import { SettingsDialog } from "@/components/dialogs/settings-dialog";
 import { AIReviewDialog } from "@/components/dialogs/ai-review-dialog";
 import { PlanPreviewDialog } from "@/components/dialogs/plan-preview-dialog";
@@ -276,6 +277,34 @@ export function InfrastructureBuilder({ projectId: initialProjectId, onBackToHom
 
   const handleNewProject = () => {
     setShowCreateProject(true);
+  };
+
+  const handleEditProjectSave = (name: string, description: string) => {
+    if (!currentProject) return;
+
+    const trimmedName = name.trim();
+    const updatedProject: Project = {
+      ...currentProject,
+      name: trimmedName,
+      description,
+      lastModified: new Date().toISOString(),
+    };
+
+    const updatedProjects = projects.map((project) =>
+      project.id === currentProject.id ? updatedProject : project
+    );
+
+    setProjects(updatedProjects);
+    setCurrentProject(updatedProject);
+    localStorage.setItem(
+      "infrastructure-designer-projects",
+      JSON.stringify(updatedProjects)
+    );
+    toast({
+      title: "✓ Project updated",
+      description: `Project renamed to "${trimmedName}"`,
+      duration: 2500,
+    });
   };
 
   const handleOpenProject = (project: Project) => {
@@ -856,10 +885,7 @@ variable "environment" {
         onCreateProject={handleNewProject}
         onOpenProject={() => setShowOpenProject(true)}
         onOpenSettings={() => setShowSettings(true)}
-        onEditProject={() => {
-          // TODO: Implement project editing
-          console.log("Edit project clicked");
-        }}
+        onEditProject={() => setShowEditProject(true)}
       />
 
       {/* Main Content Area */}
@@ -1028,6 +1054,13 @@ variable "environment" {
         currentProjectId={currentProject?.id || null}
         onOpenProject={handleOpenProject}
         onDeleteProject={handleDeleteProject}
+      />
+      <EditProjectDialog
+        open={showEditProject}
+        onOpenChange={setShowEditProject}
+        projectName={currentProject?.name || ""}
+        projectDescription={currentProject?.description || ""}
+        onSave={handleEditProjectSave}
       />
       <SettingsDialog open={showSettings} onOpenChange={setShowSettings} />
       <AIReviewDialog
